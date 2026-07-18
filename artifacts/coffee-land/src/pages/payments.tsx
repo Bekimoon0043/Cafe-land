@@ -20,6 +20,7 @@ const statusConfig: Record<string, { label: string; cls: string; icon: any }> = 
   verified: { label: "Verified", cls: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle },
   failed: { label: "Failed", cls: "bg-red-100 text-red-700 border-red-200", icon: XCircle },
   manual_review: { label: "Review", cls: "bg-blue-100 text-blue-700 border-blue-200", icon: AlertCircle },
+  rejected: { label: "Rejected", cls: "bg-red-100 text-red-700 border-red-200", icon: XCircle },
 };
 
 const methodIcon: Record<string, string> = { cash: "💵", cbe: "🏦", telebirr: "📱" };
@@ -88,12 +89,28 @@ export default function Payments() {
   };
 
   const handleManualApprove = async (id: number) => {
-    if (!confirm("Manually approve this payment?")) return;
+    if (!confirm("Approve this payment and send the order to the kitchen?")) return;
     try {
       await approvePayment.mutateAsync({ id });
       qc.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
-      toast.success("Payment approved");
-    } catch { toast.error("Failed"); }
+      toast.success("Payment approved — order sent to kitchen");
+    } catch { toast.error("Failed to approve"); }
+  };
+
+  const handleReject = async (id: number) => {
+    if (!confirm("Reject this payment? The order will be cancelled.")) return;
+    try {
+      const token = localStorage.getItem("coffee_land_token");
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${base}/api/payments/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason: "Rejected by cashier" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      qc.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
+      toast.error("Payment rejected — order cancelled");
+    } catch { toast.error("Failed to reject"); }
   };
 
   const handleProviderSave = async () => {
@@ -140,7 +157,7 @@ export default function Payments() {
       <Tabs defaultValue="all" className="flex-1 flex flex-col overflow-hidden">
         <div className="flex items-center gap-3 mb-4 shrink-0">
           <TabsList>
-            {["all", "pending", "manual_review", "verified", "failed"].map(s => (
+            {["all", "pending", "manual_review", "verified", "failed", "rejected"].map(s => (
               <TabsTrigger key={s} value={s} onClick={() => setFilterStatus(s)} className="capitalize text-xs">{s.replace("_", " ")}</TabsTrigger>
             ))}
           </TabsList>
@@ -171,15 +188,25 @@ export default function Payments() {
                       <Badge className={`${sc.cls} flex items-center gap-1 w-fit`}><StatusIcon className="w-3 h-3" />{sc.label}</Badge>
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="flex gap-2">
-                        {p.providerType !== "cash" && (p.status === "pending" || p.status === "failed") && (
-                          <button onClick={() => { setSelectedPayment(p); setReceiptId(""); setVerifyDialog(true); }} className="text-primary text-xs hover:underline font-medium">Verify</button>
-                        )}
-                        {p.providerType === "cash" && p.status === "pending" && (
-                          <button onClick={() => handleManualApprove(p.id)} className="text-emerald-600 text-xs hover:underline font-medium">Confirm Cash Received</button>
-                        )}
-                        {p.status === "manual_review" && (
+                      <div className="flex gap-2 flex-wrap">
+                        {/* Cash pending: confirm or reject */}
+                        {p.providerType === "cash" && p.status === "pending" && (<>
+                          <button onClick={() => handleManualApprove(p.id)} className="text-emerald-600 text-xs hover:underline font-medium whitespace-nowrap">Confirm Cash</button>
+                          <button onClick={() => handleReject(p.id)} className="text-red-500 text-xs hover:underline font-medium">Reject</button>
+                        </>)}
+                        {/* Digital pending (no receipt submitted yet) */}
+                        {p.providerType !== "cash" && p.status === "pending" && (<>
+                          <button onClick={() => { setSelectedPayment(p); setReceiptId(p.receiptId ?? ""); setVerifyDialog(true); }} className="text-primary text-xs hover:underline font-medium">Verify</button>
+                          <button onClick={() => handleReject(p.id)} className="text-red-500 text-xs hover:underline font-medium">Reject</button>
+                        </>)}
+                        {/* Manual review: verification failed/mismatched — cashier decides */}
+                        {p.status === "manual_review" && (<>
                           <button onClick={() => handleManualApprove(p.id)} className="text-emerald-600 text-xs hover:underline font-medium">Approve</button>
+                          <button onClick={() => handleReject(p.id)} className="text-red-500 text-xs hover:underline font-medium">Reject</button>
+                        </>)}
+                        {/* Failed: allow retry verify */}
+                        {p.providerType !== "cash" && p.status === "failed" && (
+                          <button onClick={() => { setSelectedPayment(p); setReceiptId(""); setVerifyDialog(true); }} className="text-primary text-xs hover:underline font-medium">Retry Verify</button>
                         )}
                       </div>
                     </td>

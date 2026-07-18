@@ -3,6 +3,7 @@ import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { db, paymentsTable, paymentProvidersTable, ordersTable } from "@workspace/db";
 import { requireAuth } from "../lib/auth";
 import { logAudit } from "../lib/audit";
+import { verifyCBE, verifyTelebirr } from "../lib/payment-verify";
 import type { JwtPayload } from "../lib/auth";
 
 const router = Router();
@@ -42,7 +43,6 @@ router.patch("/payments/providers/:id", requireAuth, async (req, res): Promise<v
 });
 
 // ── PUBLIC: Customer submits payment after QR order (no auth) ───────────────
-// No auto-verification — all payments stay "pending" until a cashier approves
 router.post("/payments/public", async (req, res): Promise<void> => {
   const { orderId, providerType, receiptId } = req.body;
   if (!orderId || !providerType) {
@@ -53,20 +53,87 @@ router.post("/payments/public", async (req, res): Promise<void> => {
   const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
-  // Look up provider name for display (optional — no verification done)
   const [provider] = await db.select().from(paymentProvidersTable)
     .where(and(eq(paymentProvidersTable.providerType, providerType), eq(paymentProvidersTable.isActive, true)));
 
+  const providerName = provider?.name ?? (providerType === "cash" ? "Cash" : providerType);
+
+  // ── Cash: stays pending, cashier collects & confirms ─────────────────────
+  if (providerType === "cash") {
+    const [payment] = await db.insert(paymentsTable).values({
+      orderId, providerType: "cash",
+      totalAmount: order.totalAmount,
+      status: "pending",
+    }).returning();
+    res.status(201).json(formatPayment({ ...payment, orderNumber: order.orderNumber, providerName }));
+    return;
+  }
+
+  // ── CBE / TeleBirr: auto-verify against provider API ────────────────────
+  if (!receiptId) {
+    res.status(400).json({ error: "receiptId required for CBE/TeleBirr" });
+    return;
+  }
+
   const [payment] = await db.insert(paymentsTable).values({
-    orderId,
-    providerType,
+    orderId, providerType,
     totalAmount: order.totalAmount,
-    receiptId: receiptId ?? null,   // store reference but don't verify
-    status: "pending",              // cashier must confirm before order goes to kitchen
+    receiptId,
+    status: "pending",
   }).returning();
 
-  const providerName = provider?.name ?? (providerType === "cash" ? "Cash" : providerType);
-  res.status(201).json(formatPayment({ ...payment, orderNumber: order.orderNumber, providerName }));
+  // No verification URL configured → fall back to manual review by cashier
+  if (!provider?.baseVerificationUrl) {
+    const [updated] = await db.update(paymentsTable)
+      .set({ status: "manual_review", failureReason: "No verification URL configured — cashier will review" })
+      .where(eq(paymentsTable.id, payment.id)).returning();
+    res.status(201).json(formatPayment({ ...updated, orderNumber: order.orderNumber, providerName }));
+    return;
+  }
+
+  try {
+    const verified = providerType === "telebirr"
+      ? await verifyTelebirr(provider.baseVerificationUrl, receiptId)
+      : await verifyCBE(provider.baseVerificationUrl, receiptId);
+
+    const orderTotal = parseFloat(order.totalAmount as string ?? "0");
+    const extractedAmount = verified.totalAmount ?? 0;
+    const expectedReceiver = provider.receiverAccountNo;
+    const amountMatch = extractedAmount > 0 && Math.abs(extractedAmount - orderTotal) < 1;
+    const accountMatch = !expectedReceiver || !verified.receiverAccountNo ||
+      verified.receiverAccountNo.includes(expectedReceiver) || expectedReceiver.includes(verified.receiverAccountNo);
+    const autoApproved = amountMatch && accountMatch;
+    const status = autoApproved ? "verified" : "manual_review";
+
+    const [updated] = await db.update(paymentsTable).set({
+      payerName: verified.payerName,
+      payerAccountNo: verified.payerAccountNo,
+      receiverName: verified.receiverName,
+      receiverAccountNo: verified.receiverAccountNo,
+      paymentDate: verified.paymentDate,
+      invoiceNo: verified.invoiceNo,
+      totalAmount: verified.totalAmount ? String(verified.totalAmount) : payment.totalAmount,
+      paymentMode: verified.paymentMode,
+      status,
+      failureReason: autoApproved ? null :
+        `Amount match: ${amountMatch}, Account match: ${accountMatch}. Extracted: ${extractedAmount} ETB, Expected: ${orderTotal} ETB`,
+    }).where(eq(paymentsTable.id, payment.id)).returning();
+
+    // Auto-approved → send directly to kitchen
+    if (autoApproved) {
+      await db.update(ordersTable).set({ status: "pending" }).where(eq(ordersTable.id, orderId));
+    }
+    // Mismatch → stays awaiting_payment, cashier will review
+
+    res.status(201).json(formatPayment({ ...updated, orderNumber: order.orderNumber, providerName }));
+  } catch (err: any) {
+    // Verification call failed → flag for cashier manual review
+    const [updated] = await db.update(paymentsTable).set({
+      status: "manual_review",
+      failureReason: `Verification error: ${err.message}`,
+    }).where(eq(paymentsTable.id, payment.id)).returning();
+    res.status(201).json(formatPayment({ ...updated, orderNumber: order.orderNumber, providerName }));
+  }
 });
 
 // ── PAYMENTS ────────────────────────────────────────────────────────────────
@@ -201,6 +268,21 @@ router.post("/payments/:id/approve", requireAuth, async (req, res): Promise<void
     await db.update(ordersTable).set({ status: "pending" }).where(eq(ordersTable.id, payment.orderId));
   }
   await logAudit(user, "manual_approve_payment", "payment", id);
+  res.json(formatPayment({ ...payment, orderNumber: null, providerName: null }));
+});
+
+router.post("/payments/:id/reject", requireAuth, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  const user = (req as any).user as JwtPayload;
+  const { reason } = req.body;
+  const [payment] = await db.update(paymentsTable)
+    .set({ status: "rejected", failureReason: reason ?? "Rejected by cashier" })
+    .where(eq(paymentsTable.id, id)).returning();
+  if (!payment) { res.status(404).json({ error: "Not found" }); return; }
+  // Cancel the order so it is removed from all queues
+  await db.update(ordersTable).set({ status: "cancelled", cancelReason: "Payment rejected by cashier" })
+    .where(eq(ordersTable.id, payment.orderId));
+  await logAudit(user, "reject_payment", "payment", id, `reason=${reason ?? "cashier rejection"}`);
   res.json(formatPayment({ ...payment, orderNumber: null, providerName: null }));
 });
 

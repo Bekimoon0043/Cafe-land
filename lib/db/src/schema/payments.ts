@@ -25,7 +25,7 @@ export const paymentsTable = pgTable("payments", {
   paymentDate: text("payment_date"),
   invoiceNo: text("invoice_no"),
   receiptId: text("receipt_id"),
-  status: text("status", { enum: ["pending", "verified", "failed", "manual_review"] }).notNull().default("pending"),
+  status: text("status", { enum: ["pending", "verified", "failed", "manual_review", "rejected"] }).notNull().default("pending"),
   failureReason: text("failure_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
