@@ -24,11 +24,11 @@ export const ordersTable = pgTable("orders", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({
-  orderNumberIdx: index("order_number_idx").on(table.orderNumber),
-  statusIdx: index("status_idx").on(table.status),
-  tableIdIdx: index("table_id_idx").on(table.tableId),
-  branchIdIdx: index("branch_id_idx").on(table.branchId),
-  createdAtIdx: index("created_at_idx").on(table.createdAt),
+  orderNumberIdx: index("orders_order_number_idx").on(table.orderNumber),
+  statusIdx: index("orders_status_idx").on(table.status),
+  tableIdIdx: index("orders_table_id_idx").on(table.tableId),
+  branchIdIdx: index("orders_branch_id_idx").on(table.branchId),
+  createdAtIdx: index("orders_created_at_idx").on(table.createdAt),
 }));
 
 export const orderItemsTable = pgTable("order_items", {

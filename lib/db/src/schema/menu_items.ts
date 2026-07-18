@@ -19,9 +19,9 @@ export const menuItemsTable = pgTable("menu_items", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (table) => ({
-  categoryIdIdx: index("category_id_idx").on(table.categoryId),
-  isAvailableIdx: index("is_available_idx").on(table.isAvailable),
-  branchIdIdx: index("branch_id_idx").on(table.branchId),
+  categoryIdIdx: index("menu_items_category_id_idx").on(table.categoryId),
+  isAvailableIdx: index("menu_items_is_available_idx").on(table.isAvailable),
+  branchIdIdx: index("menu_items_branch_id_idx").on(table.branchId),
 }));
 
 export const insertMenuItemSchema = createInsertSchema(menuItemsTable).omit({ id: true, createdAt: true, updatedAt: true });

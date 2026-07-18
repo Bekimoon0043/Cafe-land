@@ -1,45 +1,50 @@
-# [Project name]
+# Coffee Land ERP
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
-
-## Run & Operate
-
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+A bilingual (English/Amharic) Point of Sale and restaurant management system with POS, KDS (Kitchen Display), table management, inventory, staff coordination, and a QR-code-based customer-facing menu.
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- **Frontend**: React + Vite + Tailwind CSS v4 + Shadcn/UI — `artifacts/coffee-land`
+- **Backend**: Express 5 + Drizzle ORM + TypeScript — `artifacts/api-server`
+- **Database**: Replit PostgreSQL (Drizzle push, no migration files)
+- **API client**: Orval-generated React Query hooks — `lib/api-client-react`
+- **Monorepo**: pnpm workspaces
 
-## Where things live
+## Running the app
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+```bash
+# Install dependencies
+pnpm install
 
-## Architecture decisions
+# Push DB schema (first time or after schema changes)
+pnpm --filter @workspace/db run push
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+# Seed demo data
+pnpm --filter @workspace/api-server run seed
 
-## Product
+# Start API server (port 8080)
+pnpm --filter @workspace/api-server run dev
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+# Start frontend (port from $PORT env)
+pnpm --filter @workspace/coffee-land run dev
+```
+
+Both services are managed as Replit workflows and start automatically.
+
+## Environment variables
+
+- `DATABASE_URL` / `PG*` — Replit-provided PostgreSQL (auto-configured)
+- `SESSION_SECRET` — JWT signing secret (stored as Replit secret)
+
+## Demo credentials
+
+| Role    | Username  | Password  |
+|---------|-----------|-----------|
+| Admin   | admin     | admin123  |
+| Manager | manager1  | pass123   |
+| Cashier | cashier1  | pass123   |
+| Kitchen | kitchen1  | pass123   |
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+_No custom preferences recorded yet._
