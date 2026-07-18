@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Coffee Land ERP"
+version = "1.0.0"
+id = "artifacts/coffee-land"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18989
+
+[services.development]
+run = "pnpm --filter @workspace/coffee-land run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/coffee-land", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/coffee-land/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18989"
+BASE_PATH = "/"

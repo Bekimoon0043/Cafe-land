@@ -1,0 +1,1 @@
+- [Coffee Land ERP Architecture](coffee-land-architecture.md) — stack, CSS fix, auth, DB schema, build, QR order flow, hook naming quirk

@@ -1,0 +1,3232 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Coffee Land Restaurant ERP API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication and authorization
+  - name: menu
+    description: Menu management
+  - name: orders
+    description: Order management and POS
+  - name: tables
+    description: Table management
+  - name: inventory
+    description: Inventory and stock management
+  - name: staff
+    description: Staff and HR management
+  - name: customers
+    description: Customer CRM and loyalty
+  - name: payments
+    description: Payment processing and verification
+  - name: reports
+    description: Reporting and analytics
+  - name: settings
+    description: Restaurant settings
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ─── AUTH ──────────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with username/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── MENU CATEGORIES ───────────────────────────────────────────────────────
+  /menu/categories:
+    get:
+      operationId: listCategories
+      tags: [menu]
+      summary: List all menu categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+    post:
+      operationId: createCategory
+      tags: [menu]
+      summary: Create a category
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  /menu/categories/{id}:
+    get:
+      operationId: getCategory
+      tags: [menu]
+      summary: Get a category
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+    patch:
+      operationId: updateCategory
+      tags: [menu]
+      summary: Update a category
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+    delete:
+      operationId: deleteCategory
+      tags: [menu]
+      summary: Delete a category
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── MENU ITEMS ────────────────────────────────────────────────────────────
+  /menu/items:
+    get:
+      operationId: listMenuItems
+      tags: [menu]
+      summary: List menu items
+      parameters:
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: available
+          in: query
+          schema:
+            type: boolean
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of menu items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItem"
+
+    post:
+      operationId: createMenuItem
+      tags: [menu]
+      summary: Create a menu item
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+
+  /menu/items/{id}:
+    get:
+      operationId: getMenuItem
+      tags: [menu]
+      summary: Get a menu item with modifiers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Menu item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItemDetail"
+
+    patch:
+      operationId: updateMenuItem
+      tags: [menu]
+      summary: Update a menu item
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+
+    delete:
+      operationId: deleteMenuItem
+      tags: [menu]
+      summary: Delete a menu item
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /menu/items/{id}/toggle-availability:
+    post:
+      operationId: toggleMenuItemAvailability
+      tags: [menu]
+      summary: Toggle item availability / out-of-stock
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+
+  # ─── MODIFIER GROUPS ───────────────────────────────────────────────────────
+  /menu/modifier-groups:
+    get:
+      operationId: listModifierGroups
+      tags: [menu]
+      summary: List modifier groups
+      responses:
+        "200":
+          description: Modifier groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModifierGroup"
+
+    post:
+      operationId: createModifierGroup
+      tags: [menu]
+      summary: Create modifier group
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModifierGroupInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModifierGroup"
+
+  /menu/modifier-groups/{id}:
+    patch:
+      operationId: updateModifierGroup
+      tags: [menu]
+      summary: Update modifier group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModifierGroupUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModifierGroup"
+
+    delete:
+      operationId: deleteModifierGroup
+      tags: [menu]
+      summary: Delete modifier group
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── COMBOS ────────────────────────────────────────────────────────────────
+  /menu/combos:
+    get:
+      operationId: listCombos
+      tags: [menu]
+      summary: List combo deals
+      responses:
+        "200":
+          description: Combos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Combo"
+
+    post:
+      operationId: createCombo
+      tags: [menu]
+      summary: Create a combo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComboInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Combo"
+
+  /menu/combos/{id}:
+    patch:
+      operationId: updateCombo
+      tags: [menu]
+      summary: Update a combo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComboUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Combo"
+
+    delete:
+      operationId: deleteCombo
+      tags: [menu]
+      summary: Delete a combo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── ORDERS ────────────────────────────────────────────────────────────────
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, preparing, ready, served, completed, cancelled]
+        - name: orderType
+          in: query
+          schema:
+            type: string
+            enum: [dine_in, takeaway, delivery]
+        - name: tableId
+          in: query
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create a new order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order details with items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+
+    patch:
+      operationId: updateOrder
+      tags: [orders]
+      summary: Update order (add items, notes, etc.)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderUpdate"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/status:
+    patch:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Advance order status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+      tags: [orders]
+      summary: Cancel an order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelOrderInput"
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/kds:
+    get:
+      operationId: getKitchenDisplayOrders
+      tags: [orders]
+      summary: Kitchen Display System — active orders sorted by time
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Active kitchen orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KdsOrder"
+
+  /orders/{id}/receipt:
+    get:
+      operationId: getOrderReceipt
+      tags: [orders]
+      summary: Get receipt data for an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Receipt data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+
+  # ─── TABLES ────────────────────────────────────────────────────────────────
+  /tables:
+    get:
+      operationId: listTables
+      tags: [tables]
+      summary: List all tables with current status
+      responses:
+        "200":
+          description: Tables
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Table"
+
+    post:
+      operationId: createTable
+      tags: [tables]
+      summary: Create a table
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TableInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Table"
+
+  /tables/{id}:
+    patch:
+      operationId: updateTable
+      tags: [tables]
+      summary: Update table (status, capacity, label)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TableUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Table"
+
+    delete:
+      operationId: deleteTable
+      tags: [tables]
+      summary: Delete a table
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── INVENTORY ─────────────────────────────────────────────────────────────
+  /inventory/ingredients:
+    get:
+      operationId: listIngredients
+      tags: [inventory]
+      summary: List all ingredients/stock items
+      parameters:
+        - name: lowStock
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Ingredients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ingredient"
+
+    post:
+      operationId: createIngredient
+      tags: [inventory]
+      summary: Create an ingredient
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngredientInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingredient"
+
+  /inventory/ingredients/{id}:
+    patch:
+      operationId: updateIngredient
+      tags: [inventory]
+      summary: Update ingredient / adjust stock
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngredientUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingredient"
+
+    delete:
+      operationId: deleteIngredient
+      tags: [inventory]
+      summary: Delete an ingredient
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /inventory/low-stock-alerts:
+    get:
+      operationId: getLowStockAlerts
+      tags: [inventory]
+      summary: Get ingredients below reorder threshold
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Low stock items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ingredient"
+
+  /inventory/suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [inventory]
+      summary: List suppliers
+      responses:
+        "200":
+          description: Suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplier"
+
+    post:
+      operationId: createSupplier
+      tags: [inventory]
+      summary: Create a supplier
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+  /inventory/suppliers/{id}:
+    patch:
+      operationId: updateSupplier
+      tags: [inventory]
+      summary: Update a supplier
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+    delete:
+      operationId: deleteSupplier
+      tags: [inventory]
+      summary: Delete a supplier
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /inventory/purchase-orders:
+    get:
+      operationId: listPurchaseOrders
+      tags: [inventory]
+      summary: List purchase orders
+      parameters:
+        - name: supplierId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Purchase orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PurchaseOrder"
+
+    post:
+      operationId: createPurchaseOrder
+      tags: [inventory]
+      summary: Log a purchase order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+
+  /inventory/waste-logs:
+    get:
+      operationId: listWasteLogs
+      tags: [inventory]
+      summary: List waste/spoilage logs
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Waste logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WasteLog"
+
+    post:
+      operationId: createWasteLog
+      tags: [inventory]
+      summary: Log a waste/spoilage event
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WasteLogInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WasteLog"
+
+  /inventory/recipes:
+    get:
+      operationId: listRecipes
+      tags: [inventory]
+      summary: List item-ingredient recipes (BOM)
+      responses:
+        "200":
+          description: Recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recipe"
+
+    post:
+      operationId: createRecipe
+      tags: [inventory]
+      summary: Create/update recipe for a menu item
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+
+  # ─── STAFF ─────────────────────────────────────────────────────────────────
+  /staff/employees:
+    get:
+      operationId: listEmployees
+      tags: [staff]
+      summary: List all employees
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+
+    post:
+      operationId: createEmployee
+      tags: [staff]
+      summary: Create an employee and user account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+
+  /staff/employees/{id}:
+    get:
+      operationId: getEmployee
+      tags: [staff]
+      summary: Get employee details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+
+    patch:
+      operationId: updateEmployee
+      tags: [staff]
+      summary: Update employee
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+
+  /staff/clock-in:
+    post:
+      operationId: clockIn
+      tags: [staff]
+      summary: Clock in to shift
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClockEventInput"
+      responses:
+        "201":
+          description: Clocked in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shift"
+
+  /staff/clock-out:
+    post:
+      operationId: clockOut
+      tags: [staff]
+      summary: Clock out from shift
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClockEventInput"
+      responses:
+        "200":
+          description: Clocked out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shift"
+
+  /staff/shifts:
+    get:
+      operationId: listShifts
+      tags: [staff]
+      summary: List shifts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: employeeId
+          in: query
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Shifts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Shift"
+
+  /staff/audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags: [staff]
+      summary: List audit/activity logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: integer
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+
+  # ─── CUSTOMERS ─────────────────────────────────────────────────────────────
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List customers
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create a customer profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      summary: Get customer profile with order history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerDetail"
+
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update customer profile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /customers/{id}/redeem-points:
+    post:
+      operationId: redeemLoyaltyPoints
+      tags: [customers]
+      summary: Redeem loyalty points for a customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedeemPointsInput"
+      responses:
+        "200":
+          description: Redemption result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoyaltyTransaction"
+
+  # ─── PAYMENTS ──────────────────────────────────────────────────────────────
+  /payments/providers:
+    get:
+      operationId: listPaymentProviders
+      tags: [payments]
+      summary: List payment providers (Cash, CBE, TeleBirr)
+      responses:
+        "200":
+          description: Providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentProvider"
+
+    post:
+      operationId: createPaymentProvider
+      tags: [payments]
+      summary: Create a payment provider
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentProviderInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentProvider"
+
+  /payments/providers/{id}:
+    patch:
+      operationId: updatePaymentProvider
+      tags: [payments]
+      summary: Update provider verification URL
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentProviderUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentProvider"
+
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List payment records
+      parameters:
+        - name: method
+          in: query
+          schema:
+            type: string
+            enum: [cash, cbe, telebirr]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, verified, failed, manual_review]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: orderId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+
+    post:
+      operationId: createPayment
+      tags: [payments]
+      summary: Record a payment (cash or initiate verification)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /payments/{id}/verify:
+    post:
+      operationId: verifyPayment
+      tags: [payments]
+      summary: Verify Ethiopian CBE or TeleBirr payment receipt
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyPaymentInput"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /payments/{id}/approve:
+    post:
+      operationId: approvePayment
+      tags: [payments]
+      summary: Manually approve a payment flagged for review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  # ─── REPORTS ───────────────────────────────────────────────────────────────
+  /reports/dashboard:
+    get:
+      operationId: getDashboardSummary
+      tags: [reports]
+      summary: Admin dashboard — today's KPIs + trends
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /reports/sales:
+    get:
+      operationId: getSalesReport
+      tags: [reports]
+      summary: Sales report by period
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+          required: true
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Sales data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesReport"
+
+  /reports/top-items:
+    get:
+      operationId: getTopItems
+      tags: [reports]
+      summary: Best-selling menu items
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Top items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopItem"
+
+  /reports/payment-breakdown:
+    get:
+      operationId: getPaymentBreakdown
+      tags: [reports]
+      summary: Payment method breakdown
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Payment breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentBreakdown"
+
+  /reports/staff-performance:
+    get:
+      operationId: getStaffPerformance
+      tags: [reports]
+      summary: Staff performance metrics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Staff metrics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StaffPerformance"
+
+  /reports/hourly-sales:
+    get:
+      operationId: getHourlySales
+      tags: [reports]
+      summary: Hourly sales breakdown for today
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Hourly sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HourlySales"
+
+  # ─── SETTINGS ──────────────────────────────────────────────────────────────
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get restaurant settings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantSettings"
+
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update restaurant settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestaurantSettingsUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantSettings"
+
+  /settings/branches:
+    get:
+      operationId: listBranches
+      tags: [settings]
+      summary: List branches
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Branches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Branch"
+
+    post:
+      operationId: createBranch
+      tags: [settings]
+      summary: Create a branch
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BranchInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branch"
+
+# ─── COMPONENTS ───────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    # ── AUTH ──────────────────────────────────────────────────────────────────
+    LoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, username, role, employeeId]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, cashier, kitchen]
+        employeeId:
+          type: ["integer", "null"]
+        branchId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── MENU ──────────────────────────────────────────────────────────────────
+    Category:
+      type: object
+      required: [id, nameEn, nameAm, sortOrder]
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        parentId:
+          type: ["integer", "null"]
+        icon:
+          type: ["string", "null"]
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    CategoryInput:
+      type: object
+      required: [nameEn, nameAm]
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        parentId:
+          type: ["integer", "null"]
+        icon:
+          type: ["string", "null"]
+        sortOrder:
+          type: integer
+
+    CategoryUpdate:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        parentId:
+          type: ["integer", "null"]
+        icon:
+          type: ["string", "null"]
+        sortOrder:
+          type: integer
+
+    MenuItem:
+      type: object
+      required: [id, nameEn, nameAm, categoryId, price, isAvailable, prepTimeMinutes]
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAm:
+          type: ["string", "null"]
+        categoryId:
+          type: integer
+        categoryName:
+          type: ["string", "null"]
+        price:
+          type: number
+        imageUrl:
+          type: ["string", "null"]
+        isAvailable:
+          type: boolean
+        prepTimeMinutes:
+          type: integer
+        branchId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    MenuItemDetail:
+      allOf:
+        - $ref: "#/components/schemas/MenuItem"
+        - type: object
+          properties:
+            modifierGroups:
+              type: array
+              items:
+                $ref: "#/components/schemas/ModifierGroup"
+
+    MenuItemInput:
+      type: object
+      required: [nameEn, nameAm, categoryId, price, prepTimeMinutes]
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAm:
+          type: ["string", "null"]
+        categoryId:
+          type: integer
+        price:
+          type: number
+        imageUrl:
+          type: ["string", "null"]
+        isAvailable:
+          type: boolean
+        prepTimeMinutes:
+          type: integer
+        branchId:
+          type: ["integer", "null"]
+
+    MenuItemUpdate:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAm:
+          type: ["string", "null"]
+        categoryId:
+          type: integer
+        price:
+          type: number
+        imageUrl:
+          type: ["string", "null"]
+        isAvailable:
+          type: boolean
+        prepTimeMinutes:
+          type: integer
+
+    ModifierGroup:
+      type: object
+      required: [id, nameEn, nameAm, minSelect, maxSelect, menuItemIds, modifiers]
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        minSelect:
+          type: integer
+        maxSelect:
+          type: integer
+        menuItemIds:
+          type: array
+          items:
+            type: integer
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Modifier"
+
+    Modifier:
+      type: object
+      required: [id, groupId, nameEn, nameAm, priceDelta]
+      properties:
+        id:
+          type: integer
+        groupId:
+          type: integer
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        priceDelta:
+          type: number
+
+    ModifierGroupInput:
+      type: object
+      required: [nameEn, nameAm, minSelect, maxSelect, modifiers, menuItemIds]
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        minSelect:
+          type: integer
+        maxSelect:
+          type: integer
+        menuItemIds:
+          type: array
+          items:
+            type: integer
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModifierInput"
+
+    ModifierInput:
+      type: object
+      required: [nameEn, nameAm, priceDelta]
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        priceDelta:
+          type: number
+
+    ModifierGroupUpdate:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        minSelect:
+          type: integer
+        maxSelect:
+          type: integer
+        menuItemIds:
+          type: array
+          items:
+            type: integer
+        modifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModifierInput"
+
+    Combo:
+      type: object
+      required: [id, nameEn, nameAm, price, isAvailable, items]
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAm:
+          type: ["string", "null"]
+        price:
+          type: number
+        imageUrl:
+          type: ["string", "null"]
+        isAvailable:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComboItem"
+        createdAt:
+          type: string
+          format: date-time
+
+    ComboItem:
+      type: object
+      required: [menuItemId, quantity]
+      properties:
+        menuItemId:
+          type: integer
+        menuItemName:
+          type: ["string", "null"]
+        quantity:
+          type: integer
+
+    ComboInput:
+      type: object
+      required: [nameEn, nameAm, price, items]
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAm:
+          type: ["string", "null"]
+        price:
+          type: number
+        imageUrl:
+          type: ["string", "null"]
+        isAvailable:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComboItem"
+
+    ComboUpdate:
+      type: object
+      properties:
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        descriptionEn:
+          type: ["string", "null"]
+        descriptionAm:
+          type: ["string", "null"]
+        price:
+          type: number
+        imageUrl:
+          type: ["string", "null"]
+        isAvailable:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComboItem"
+
+    # ── ORDERS ────────────────────────────────────────────────────────────────
+    Order:
+      type: object
+      required: [id, orderNumber, orderType, status, totalAmount, createdAt]
+      properties:
+        id:
+          type: integer
+        orderNumber:
+          type: string
+        orderType:
+          type: string
+          enum: [dine_in, takeaway, delivery]
+        status:
+          type: string
+          enum: [pending, preparing, ready, served, completed, cancelled]
+        tableId:
+          type: ["integer", "null"]
+        tableLabel:
+          type: ["string", "null"]
+        customerId:
+          type: ["integer", "null"]
+        customerName:
+          type: ["string", "null"]
+        staffId:
+          type: ["integer", "null"]
+        staffName:
+          type: ["string", "null"]
+        totalAmount:
+          type: number
+        discountAmount:
+          type: number
+        taxAmount:
+          type: number
+        notes:
+          type: ["string", "null"]
+        deliveryAddress:
+          type: ["string", "null"]
+        branchId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderDetail:
+      allOf:
+        - $ref: "#/components/schemas/Order"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/OrderItem"
+            payment:
+              $ref: "#/components/schemas/Payment"
+
+    OrderItem:
+      type: object
+      required: [id, orderId, menuItemId, nameEn, nameAm, quantity, unitPrice, totalPrice]
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: integer
+        menuItemId:
+          type: integer
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        totalPrice:
+          type: number
+        selectedModifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectedModifier"
+        notes:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, preparing, ready]
+
+    SelectedModifier:
+      type: object
+      required: [modifierId, nameEn, nameAm, priceDelta]
+      properties:
+        modifierId:
+          type: integer
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        priceDelta:
+          type: number
+
+    OrderInput:
+      type: object
+      required: [orderType, items]
+      properties:
+        orderType:
+          type: string
+          enum: [dine_in, takeaway, delivery]
+        tableId:
+          type: ["integer", "null"]
+        customerId:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        deliveryAddress:
+          type: ["string", "null"]
+        discountAmount:
+          type: number
+        branchId:
+          type: ["integer", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemInput"
+
+    OrderItemInput:
+      type: object
+      required: [menuItemId, quantity, unitPrice]
+      properties:
+        menuItemId:
+          type: integer
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        selectedModifiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SelectedModifier"
+        notes:
+          type: ["string", "null"]
+
+    OrderUpdate:
+      type: object
+      properties:
+        notes:
+          type: ["string", "null"]
+        tableId:
+          type: ["integer", "null"]
+        customerId:
+          type: ["integer", "null"]
+        discountAmount:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItemInput"
+
+    OrderStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, preparing, ready, served, completed, cancelled]
+
+    CancelOrderInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    KdsOrder:
+      type: object
+      required: [id, orderNumber, orderType, tableLabel, items, createdAt, elapsedMinutes]
+      properties:
+        id:
+          type: integer
+        orderNumber:
+          type: string
+        orderType:
+          type: string
+          enum: [dine_in, takeaway, delivery]
+        tableLabel:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        createdAt:
+          type: string
+          format: date-time
+        elapsedMinutes:
+          type: integer
+        status:
+          type: string
+
+    Receipt:
+      type: object
+      required: [orderNumber, orderType, items, subtotal, tax, total, createdAt]
+      properties:
+        orderNumber:
+          type: string
+        orderType:
+          type: string
+        tableLabel:
+          type: ["string", "null"]
+        staffName:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        subtotal:
+          type: number
+        discount:
+          type: number
+        tax:
+          type: number
+        total:
+          type: number
+        paymentMethod:
+          type: ["string", "null"]
+        restaurantName:
+          type: string
+        restaurantPhone:
+          type: ["string", "null"]
+        footerText:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── TABLES ────────────────────────────────────────────────────────────────
+    Table:
+      type: object
+      required: [id, label, capacity, status, branchId]
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        capacity:
+          type: integer
+        status:
+          type: string
+          enum: [free, occupied, reserved, cleaning]
+        currentOrderId:
+          type: ["integer", "null"]
+        branchId:
+          type: integer
+        qrCode:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    TableInput:
+      type: object
+      required: [label, capacity, branchId]
+      properties:
+        label:
+          type: string
+        capacity:
+          type: integer
+        branchId:
+          type: integer
+
+    TableUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+        capacity:
+          type: integer
+        status:
+          type: string
+          enum: [free, occupied, reserved, cleaning]
+
+    # ── INVENTORY ─────────────────────────────────────────────────────────────
+    Ingredient:
+      type: object
+      required: [id, name, unit, currentStock, reorderThreshold, costPerUnit]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        unit:
+          type: string
+          enum: [kg, g, liter, ml, piece, pack]
+        currentStock:
+          type: number
+        reorderThreshold:
+          type: number
+        costPerUnit:
+          type: number
+        supplierId:
+          type: ["integer", "null"]
+        supplierName:
+          type: ["string", "null"]
+        isLowStock:
+          type: boolean
+        branchId:
+          type: ["integer", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+
+    IngredientInput:
+      type: object
+      required: [name, unit, currentStock, reorderThreshold, costPerUnit]
+      properties:
+        name:
+          type: string
+        unit:
+          type: string
+          enum: [kg, g, liter, ml, piece, pack]
+        currentStock:
+          type: number
+        reorderThreshold:
+          type: number
+        costPerUnit:
+          type: number
+        supplierId:
+          type: ["integer", "null"]
+        branchId:
+          type: ["integer", "null"]
+
+    IngredientUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        unit:
+          type: string
+          enum: [kg, g, liter, ml, piece, pack]
+        currentStock:
+          type: number
+        reorderThreshold:
+          type: number
+        costPerUnit:
+          type: number
+        supplierId:
+          type: ["integer", "null"]
+
+    Supplier:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contactPerson:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    SupplierInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+
+    SupplierUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        contactPerson:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+
+    PurchaseOrder:
+      type: object
+      required: [id, supplierId, totalCost, status, createdAt, items]
+      properties:
+        id:
+          type: integer
+        supplierId:
+          type: integer
+        supplierName:
+          type: ["string", "null"]
+        totalCost:
+          type: number
+        status:
+          type: string
+          enum: [pending, received, cancelled]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderItem"
+
+    PurchaseOrderItem:
+      type: object
+      required: [ingredientId, quantity, unitCost]
+      properties:
+        ingredientId:
+          type: integer
+        ingredientName:
+          type: ["string", "null"]
+        quantity:
+          type: number
+        unitCost:
+          type: number
+
+    PurchaseOrderInput:
+      type: object
+      required: [supplierId, items]
+      properties:
+        supplierId:
+          type: integer
+        notes:
+          type: ["string", "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderItem"
+
+    WasteLog:
+      type: object
+      required: [id, ingredientId, quantity, reason, loggedById, createdAt]
+      properties:
+        id:
+          type: integer
+        ingredientId:
+          type: integer
+        ingredientName:
+          type: ["string", "null"]
+        quantity:
+          type: number
+        reason:
+          type: string
+        loggedById:
+          type: integer
+        loggedByName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    WasteLogInput:
+      type: object
+      required: [ingredientId, quantity, reason]
+      properties:
+        ingredientId:
+          type: integer
+        quantity:
+          type: number
+        reason:
+          type: string
+
+    Recipe:
+      type: object
+      required: [id, menuItemId, ingredients]
+      properties:
+        id:
+          type: integer
+        menuItemId:
+          type: integer
+        menuItemName:
+          type: ["string", "null"]
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeIngredient"
+        updatedAt:
+          type: string
+          format: date-time
+
+    RecipeIngredient:
+      type: object
+      required: [ingredientId, quantity]
+      properties:
+        ingredientId:
+          type: integer
+        ingredientName:
+          type: ["string", "null"]
+        quantity:
+          type: number
+        unit:
+          type: ["string", "null"]
+
+    RecipeInput:
+      type: object
+      required: [menuItemId, ingredients]
+      properties:
+        menuItemId:
+          type: integer
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeIngredient"
+
+    # ── STAFF ─────────────────────────────────────────────────────────────────
+    Employee:
+      type: object
+      required: [id, fullName, role, phone, hireDate, isActive]
+      properties:
+        id:
+          type: integer
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, cashier, kitchen]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        hireDate:
+          type: string
+          format: date
+        salary:
+          type: ["number", "null"]
+        isActive:
+          type: boolean
+        branchId:
+          type: ["integer", "null"]
+        userId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    EmployeeInput:
+      type: object
+      required: [fullName, role, phone, hireDate, username, password]
+      properties:
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, cashier, kitchen]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        hireDate:
+          type: string
+          format: date
+        salary:
+          type: ["number", "null"]
+        branchId:
+          type: ["integer", "null"]
+        username:
+          type: string
+        password:
+          type: string
+
+    EmployeeUpdate:
+      type: object
+      properties:
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, cashier, kitchen]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        salary:
+          type: ["number", "null"]
+        isActive:
+          type: boolean
+        branchId:
+          type: ["integer", "null"]
+
+    Shift:
+      type: object
+      required: [id, employeeId, clockIn]
+      properties:
+        id:
+          type: integer
+        employeeId:
+          type: integer
+        employeeName:
+          type: ["string", "null"]
+        clockIn:
+          type: string
+          format: date-time
+        clockOut:
+          type: ["string", "null"]
+        totalHours:
+          type: ["number", "null"]
+
+    ClockEventInput:
+      type: object
+      required: [employeeId]
+      properties:
+        employeeId:
+          type: integer
+
+    AuditLog:
+      type: object
+      required: [id, userId, action, entityType, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        username:
+          type: ["string", "null"]
+        action:
+          type: string
+        entityType:
+          type: string
+        entityId:
+          type: ["integer", "null"]
+        details:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── CUSTOMERS ─────────────────────────────────────────────────────────────
+    Customer:
+      type: object
+      required: [id, name, phone, loyaltyPoints, totalOrders, totalSpent]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+        loyaltyPoints:
+          type: integer
+        totalOrders:
+          type: integer
+        totalSpent:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    CustomerDetail:
+      allOf:
+        - $ref: "#/components/schemas/Customer"
+        - type: object
+          properties:
+            recentOrders:
+              type: array
+              items:
+                $ref: "#/components/schemas/Order"
+            loyaltyHistory:
+              type: array
+              items:
+                $ref: "#/components/schemas/LoyaltyTransaction"
+
+    CustomerInput:
+      type: object
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+
+    CustomerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+
+    LoyaltyTransaction:
+      type: object
+      required: [id, customerId, points, type, createdAt]
+      properties:
+        id:
+          type: integer
+        customerId:
+          type: integer
+        points:
+          type: integer
+        type:
+          type: string
+          enum: [earned, redeemed]
+        orderId:
+          type: ["integer", "null"]
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    RedeemPointsInput:
+      type: object
+      required: [points, orderId]
+      properties:
+        points:
+          type: integer
+        orderId:
+          type: integer
+
+    # ── PAYMENTS ──────────────────────────────────────────────────────────────
+    PaymentProvider:
+      type: object
+      required: [id, name, providerType]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        providerType:
+          type: string
+          enum: [cash, cbe, telebirr]
+        baseVerificationUrl:
+          type: ["string", "null"]
+        receiverAccountNo:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    PaymentProviderInput:
+      type: object
+      required: [name, providerType]
+      properties:
+        name:
+          type: string
+        providerType:
+          type: string
+          enum: [cash, cbe, telebirr]
+        baseVerificationUrl:
+          type: ["string", "null"]
+        receiverAccountNo:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+
+    PaymentProviderUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        baseVerificationUrl:
+          type: ["string", "null"]
+        receiverAccountNo:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+
+    Payment:
+      type: object
+      required: [id, orderId, providerType, totalAmount, status, createdAt]
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: integer
+        orderNumber:
+          type: ["string", "null"]
+        providerType:
+          type: string
+          enum: [cash, cbe, telebirr]
+        providerName:
+          type: ["string", "null"]
+        totalAmount:
+          type: number
+        paymentMode:
+          type: ["string", "null"]
+        payerName:
+          type: ["string", "null"]
+        payerAccountNo:
+          type: ["string", "null"]
+        receiverName:
+          type: ["string", "null"]
+        receiverAccountNo:
+          type: ["string", "null"]
+        paymentDate:
+          type: ["string", "null"]
+        invoiceNo:
+          type: ["string", "null"]
+        receiptId:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, verified, failed, manual_review]
+        failureReason:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    PaymentInput:
+      type: object
+      required: [orderId, providerType, totalAmount]
+      properties:
+        orderId:
+          type: integer
+        providerType:
+          type: string
+          enum: [cash, cbe, telebirr]
+        totalAmount:
+          type: number
+        receiptId:
+          type: ["string", "null"]
+
+    VerifyPaymentInput:
+      type: object
+      required: [receiptId]
+      properties:
+        receiptId:
+          type: string
+
+    # ── REPORTS ───────────────────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      required: [todayRevenue, todayOrders, activeOrders, lowStockCount, topItemsToday, recentOrders, ordersByStatus, revenueThisWeek]
+      properties:
+        todayRevenue:
+          type: number
+        todayOrders:
+          type: integer
+        activeOrders:
+          type: integer
+        lowStockCount:
+          type: integer
+        avgOrderValue:
+          type: number
+        topItemsToday:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopItem"
+        recentOrders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        ordersByStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+        revenueThisWeek:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyRevenue"
+
+    StatusCount:
+      type: object
+      required: [status, count]
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+
+    DailyRevenue:
+      type: object
+      required: [date, revenue, orders]
+      properties:
+        date:
+          type: string
+        revenue:
+          type: number
+        orders:
+          type: integer
+
+    SalesReport:
+      type: object
+      required: [totalRevenue, totalOrders, avgOrderValue, data, topCategories]
+      properties:
+        totalRevenue:
+          type: number
+        totalOrders:
+          type: integer
+        avgOrderValue:
+          type: number
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyRevenue"
+        topCategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryRevenue"
+
+    CategoryRevenue:
+      type: object
+      required: [categoryName, revenue, orders]
+      properties:
+        categoryName:
+          type: string
+        revenue:
+          type: number
+        orders:
+          type: integer
+
+    TopItem:
+      type: object
+      required: [menuItemId, nameEn, nameAm, totalSold, revenue]
+      properties:
+        menuItemId:
+          type: integer
+        nameEn:
+          type: string
+        nameAm:
+          type: string
+        totalSold:
+          type: integer
+        revenue:
+          type: number
+
+    PaymentBreakdown:
+      type: object
+      required: [total, breakdown]
+      properties:
+        total:
+          type: number
+        breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentMethodStat"
+
+    PaymentMethodStat:
+      type: object
+      required: [method, count, amount, percentage]
+      properties:
+        method:
+          type: string
+        count:
+          type: integer
+        amount:
+          type: number
+        percentage:
+          type: number
+
+    StaffPerformance:
+      type: object
+      required: [employeeId, employeeName, role, ordersHandled, totalRevenue, avgOrderTime]
+      properties:
+        employeeId:
+          type: integer
+        employeeName:
+          type: string
+        role:
+          type: string
+        ordersHandled:
+          type: integer
+        totalRevenue:
+          type: number
+        avgOrderTime:
+          type: number
+
+    HourlySales:
+      type: object
+      required: [hour, revenue, orders]
+      properties:
+        hour:
+          type: integer
+        revenue:
+          type: number
+        orders:
+          type: integer
+
+    # ── SETTINGS ──────────────────────────────────────────────────────────────
+    RestaurantSettings:
+      type: object
+      required: [id, name, branchId]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nameAm:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        vatRate:
+          type: number
+        loyaltyPointsPerEtb:
+          type: number
+        receiptFooterText:
+          type: ["string", "null"]
+        primaryColor:
+          type: ["string", "null"]
+        branchId:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+
+    RestaurantSettingsUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        nameAm:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        vatRate:
+          type: number
+        loyaltyPointsPerEtb:
+          type: number
+        receiptFooterText:
+          type: ["string", "null"]
+        primaryColor:
+          type: ["string", "null"]
+
+    Branch:
+      type: object
+      required: [id, name, address, isActive]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    BranchInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        address:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
