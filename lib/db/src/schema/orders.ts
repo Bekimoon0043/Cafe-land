@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, numeric, jsonb, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { branchesTable } from "./branches";
@@ -23,7 +23,13 @@ export const ordersTable = pgTable("orders", {
   branchId: integer("branch_id").references(() => branchesTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (table) => ({
+  orderNumberIdx: index("order_number_idx").on(table.orderNumber),
+  statusIdx: index("status_idx").on(table.status),
+  tableIdIdx: index("table_id_idx").on(table.tableId),
+  branchIdIdx: index("branch_id_idx").on(table.branchId),
+  createdAtIdx: index("created_at_idx").on(table.createdAt),
+}));
 
 export const orderItemsTable = pgTable("order_items", {
   id: serial("id").primaryKey(),

@@ -143,7 +143,15 @@ export default function CustomerMenu() {
 
   const catIcon = (catId: number) => {
     const c = categories.find(x => x.id === catId);
-    return EMOJI[c?.icon ?? ""] ?? "🍽️";
+    if (c?.icon && EMOJI[c.icon]) return EMOJI[c.icon];
+    
+    const name = (c?.nameEn || "").toLowerCase();
+    if (name.includes("coffee") || name.includes("tea") || name.includes("drink")) return "☕";
+    if (name.includes("food") || name.includes("burger") || name.includes("pizza")) return "🍔";
+    if (name.includes("dessert") || name.includes("cake") || name.includes("sweet")) return "🍰";
+    if (name.includes("salad") || name.includes("healthy")) return "🥗";
+    
+    return "🍽️";
   };
 
   return (
@@ -201,12 +209,13 @@ export default function CustomerMenu() {
             <button
               key={cat.id ?? "all"}
               onClick={() => setCat(cat.id)}
-              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap
+              className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5
                 ${selectedCat === cat.id
-                  ? "bg-[#cc5500] text-white shadow-md"
-                  : "bg-white/10 text-white/70 hover:bg-white/20"
+                  ? "bg-[#cc5500] text-white shadow-md scale-105"
+                  : "bg-white/10 text-white/70 hover:bg-white/20 hover:scale-105"
                 }`}
             >
+              {cat.id !== null && <span className="text-sm">{catIcon(cat.id)}</span>}
               {lang === "am" ? cat.nameAm : cat.nameEn}
             </button>
           ))}
@@ -225,12 +234,12 @@ export default function CustomerMenu() {
         {filtered.map(item => {
           const qty = getQty(item.id);
           return (
-            <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden flex">
+            <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden flex hover:shadow-md transition-shadow duration-300">
               {/* Thumbnail */}
-              <div className="w-24 h-24 flex-shrink-0 bg-orange-50 flex items-center justify-center text-4xl">
+              <div className="w-28 h-28 flex-shrink-0 bg-orange-50 flex items-center justify-center text-4xl overflow-hidden">
                 {item.imageUrl
-                  ? <img src={item.imageUrl} alt={item.nameEn} className="w-full h-full object-cover" />
-                  : catIcon(item.categoryId)
+                  ? <img src={item.imageUrl} alt={item.nameEn} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                  : <span className="opacity-80">{catIcon(item.categoryId)}</span>
                 }
               </div>
 
@@ -256,17 +265,17 @@ export default function CustomerMenu() {
                   </span>
 
                   {qty > 0 ? (
-                    <div className="flex items-center gap-2 bg-orange-50 rounded-full px-2 py-1">
+                    <div className="flex items-center gap-1.5 bg-orange-50 rounded-full px-2.5 py-1.5 shadow-sm">
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="w-6 h-6 rounded-full bg-[#cc5500]/20 flex items-center justify-center"
+                        className="w-6 h-6 rounded-full bg-[#cc5500]/20 flex items-center justify-center hover:bg-[#cc5500]/30 transition-colors"
                       >
                         <Minus className="w-3 h-3 text-[#cc5500]" />
                       </button>
-                      <span className="text-sm font-bold text-[#cc5500] w-4 text-center">{qty}</span>
+                      <span className="text-sm font-bold text-[#cc5500] w-5 text-center">{qty}</span>
                       <button
                         onClick={() => addToCart(item)}
-                        className="w-6 h-6 rounded-full bg-[#cc5500] flex items-center justify-center"
+                        className="w-6 h-6 rounded-full bg-[#cc5500] flex items-center justify-center hover:bg-[#b34a00] transition-colors shadow-sm"
                       >
                         <Plus className="w-3 h-3 text-white" />
                       </button>
@@ -274,9 +283,9 @@ export default function CustomerMenu() {
                   ) : (
                     <button
                       onClick={() => addToCart(item)}
-                      className="bg-[#cc5500] text-white rounded-full px-3 py-1.5 text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform"
+                      className="bg-[#cc5500] text-white rounded-full px-3.5 py-1.5 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all hover:bg-[#b34a00] shadow-sm"
                     >
-                      <Plus className="w-3 h-3" />{t("Add","ጨምር")}
+                      <Plus className="w-3.5 h-3.5" />{t("Add","ጨምር")}
                     </button>
                   )}
                 </div>
@@ -291,11 +300,11 @@ export default function CustomerMenu() {
         <div className="fixed bottom-6 left-0 right-0 px-4 z-40 flex justify-center">
           <button
             onClick={() => setCartOpen(true)}
-            className="w-full max-w-md bg-[#cc5500] text-white rounded-2xl px-5 py-4 shadow-2xl flex items-center justify-between font-semibold active:scale-[0.98] transition-transform"
+            className="w-full max-w-md bg-[#cc5500] text-white rounded-2xl px-5 py-4 shadow-2xl flex items-center justify-between font-semibold active:scale-[0.98] transition-all hover:shadow-3xl hover:bg-[#b34a00]"
           >
-            <span className="bg-white/20 rounded-full px-2.5 py-0.5 text-sm font-bold">{cartCount}</span>
+            <span className="bg-white/20 rounded-full px-3 py-1 text-sm font-bold">{cartCount}</span>
             <span className="text-base">{t("View Order","ትዕዛዝ ይመልከቱ")}</span>
-            <span className="text-base">{cartTotal.toLocaleString()} ETB</span>
+            <span className="text-base font-bold">{cartTotal.toLocaleString()} ETB</span>
           </button>
         </div>
       )}

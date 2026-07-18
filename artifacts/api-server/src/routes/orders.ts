@@ -61,9 +61,29 @@ router.post("/orders/public", async (req, res): Promise<void> => {
   const vatRate = parseFloat(settings?.vatRate as string ?? "15") / 100;
 
   let subtotal = 0;
+  const itemDetails = [];
+  
   for (const item of items) {
-    subtotal += parseFloat(String(item.unitPrice)) * item.quantity;
+    const [dbItem] = await db.select().from(menuItemsTable).where(eq(menuItemsTable.id, item.menuItemId));
+    if (!dbItem) {
+      res.status(400).json({ error: `Item ${item.menuItemId} not found` });
+      return;
+    }
+    if (!dbItem.isAvailable) {
+      res.status(400).json({ error: `Item ${dbItem.nameEn} is not available` });
+      return;
+    }
+    
+    const price = parseFloat(dbItem.price);
+    subtotal += price * item.quantity;
+    itemDetails.push({
+      ...item,
+      unitPrice: price,
+      nameEn: dbItem.nameEn,
+      nameAm: dbItem.nameAm
+    });
   }
+  
   const tax   = Math.round(subtotal * vatRate * 100) / 100;
   const total = Math.round((subtotal + tax) * 100) / 100;
 
@@ -86,15 +106,19 @@ router.post("/orders/public", async (req, res): Promise<void> => {
     branchId,
   }).returning();
 
-  for (const item of items) {
-    const itemTotal = parseFloat(String(item.unitPrice)) * item.quantity;
-    const [mi] = await db.select().from(menuItemsTable).where(eq(menuItemsTable.id, item.menuItemId));
+  for (const item of itemDetails) {
+    const itemTotal = item.unitPrice * item.quantity;
     await db.insert(orderItemsTable).values({
-      orderId: order.id, menuItemId: item.menuItemId,
-      nameEn: mi?.nameEn ?? "Item", nameAm: mi?.nameAm ?? "ሸቀጥ",
-      quantity: item.quantity, unitPrice: String(item.unitPrice),
+      orderId: order.id,
+      menuItemId: item.menuItemId,
+      nameEn: item.nameEn,
+      nameAm: item.nameAm,
+      quantity: item.quantity,
+      unitPrice: String(item.unitPrice),
       totalPrice: String(Math.round(itemTotal * 100) / 100),
-      selectedModifiers: [], notes: null, status: "pending",
+      selectedModifiers: [],
+      notes: null,
+      status: "pending",
     });
   }
 
@@ -115,15 +139,34 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   const [settings] = await db.select().from(restaurantSettingsTable);
   const vatRate = parseFloat(settings?.vatRate as string ?? "15") / 100;
 
-  // Calculate totals
+  // Calculate totals and verify items
   let subtotal = 0;
+  const itemDetails = [];
+  
   for (const item of items) {
-    let itemTotal = parseFloat(String(item.unitPrice)) * item.quantity;
+    const [dbItem] = await db.select().from(menuItemsTable).where(eq(menuItemsTable.id, item.menuItemId));
+    if (!dbItem) {
+      res.status(400).json({ error: `Item ${item.menuItemId} not found` });
+      return;
+    }
+    
+    const price = parseFloat(dbItem.price);
+    let itemTotal = price * item.quantity;
+    
+    // In a full implementation, we would also verify modifiers prices here
     for (const mod of item.selectedModifiers ?? []) {
       itemTotal += parseFloat(String(mod.priceDelta)) * item.quantity;
     }
+    
     subtotal += itemTotal;
+    itemDetails.push({
+      ...item,
+      unitPrice: price,
+      nameEn: dbItem.nameEn,
+      nameAm: dbItem.nameAm
+    });
   }
+  
   const discount = parseFloat(String(discountAmount ?? 0));
   const taxable = subtotal - discount;
   const tax = Math.round(taxable * vatRate * 100) / 100;
@@ -144,20 +187,23 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   }).returning();
 
   // Insert items
-  for (const item of items) {
-    let itemTotal = parseFloat(String(item.unitPrice)) * item.quantity;
+  for (const item of itemDetails) {
+    let itemTotal = item.unitPrice * item.quantity;
     for (const mod of item.selectedModifiers ?? []) {
       itemTotal += parseFloat(String(mod.priceDelta)) * item.quantity;
     }
-    // Get menu item names
-    const [mi] = await db.select().from(menuItemsTable).where(eq(menuItemsTable.id, item.menuItemId));
+    
     await db.insert(orderItemsTable).values({
-      orderId: order.id, menuItemId: item.menuItemId,
-      nameEn: mi?.nameEn ?? "Item", nameAm: mi?.nameAm ?? "ሸቀጥ",
-      quantity: item.quantity, unitPrice: String(item.unitPrice),
+      orderId: order.id,
+      menuItemId: item.menuItemId,
+      nameEn: item.nameEn,
+      nameAm: item.nameAm,
+      quantity: item.quantity,
+      unitPrice: String(item.unitPrice),
       totalPrice: String(Math.round(itemTotal * 100) / 100),
       selectedModifiers: item.selectedModifiers ?? [],
-      notes: item.notes ?? null, status: "pending",
+      notes: item.notes ?? null,
+      status: "pending",
     });
   }
 
