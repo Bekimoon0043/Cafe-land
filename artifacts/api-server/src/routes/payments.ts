@@ -42,6 +42,92 @@ router.patch("/payments/providers/:id", requireAuth, async (req, res): Promise<v
   res.json(row);
 });
 
+// ── PUBLIC: Customer submits payment after QR order (no auth) ───────────────
+router.post("/payments/public", async (req, res): Promise<void> => {
+  const { orderId, providerType, receiptId } = req.body;
+  if (!orderId || !providerType) {
+    res.status(400).json({ error: "orderId and providerType required" });
+    return;
+  }
+
+  const [order] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+
+  // Cash on delivery: stays pending until cashier confirms
+  if (providerType === "cash") {
+    const [payment] = await db.insert(paymentsTable).values({
+      orderId,
+      providerType: "cash",
+      totalAmount: order.totalAmount,
+      status: "pending",
+    }).returning();
+    res.status(201).json(formatPayment({ ...payment, orderNumber: order.orderNumber, providerName: "Cash" }));
+    return;
+  }
+
+  // CBE / TeleBirr: need receipt ID
+  if (!receiptId) {
+    res.status(400).json({ error: "receiptId required for CBE/TeleBirr" });
+    return;
+  }
+
+  const [provider] = await db.select().from(paymentProvidersTable)
+    .where(and(eq(paymentProvidersTable.providerType, providerType), eq(paymentProvidersTable.isActive, true)));
+
+  const [payment] = await db.insert(paymentsTable).values({
+    orderId,
+    providerType,
+    totalAmount: order.totalAmount,
+    receiptId,
+    status: "pending",
+  }).returning();
+
+  if (!provider?.baseVerificationUrl) {
+    res.status(201).json(formatPayment({ ...payment, orderNumber: order.orderNumber, providerName: provider?.name ?? null }));
+    return;
+  }
+
+  try {
+    const verified = providerType === "telebirr"
+      ? await verifyTelebirr(provider.baseVerificationUrl, receiptId)
+      : await verifyCBE(provider.baseVerificationUrl, receiptId);
+
+    const orderTotal = parseFloat(order.totalAmount as string ?? "0");
+    const extractedAmount = verified.totalAmount ?? 0;
+    const expectedReceiver = provider.receiverAccountNo;
+    const amountMatch = extractedAmount > 0 && Math.abs(extractedAmount - orderTotal) < 1;
+    const accountMatch = !expectedReceiver || !verified.receiverAccountNo ||
+      verified.receiverAccountNo.includes(expectedReceiver) || expectedReceiver.includes(verified.receiverAccountNo);
+    const autoApproved = amountMatch && accountMatch;
+    const status = autoApproved ? "verified" : "manual_review";
+
+    const [updated] = await db.update(paymentsTable).set({
+      payerName: verified.payerName,
+      payerAccountNo: verified.payerAccountNo,
+      receiverName: verified.receiverName,
+      receiverAccountNo: verified.receiverAccountNo,
+      paymentDate: verified.paymentDate,
+      invoiceNo: verified.invoiceNo,
+      totalAmount: verified.totalAmount ? String(verified.totalAmount) : payment.totalAmount,
+      paymentMode: verified.paymentMode,
+      status,
+      failureReason: autoApproved ? null :
+        `Amount match: ${amountMatch}, Account match: ${accountMatch}. Extracted: ${extractedAmount} ETB, Expected: ${orderTotal} ETB`,
+    }).where(eq(paymentsTable.id, payment.id)).returning();
+
+    if (autoApproved) {
+      await db.update(ordersTable).set({ status: "completed" }).where(eq(ordersTable.id, orderId));
+    }
+
+    res.status(201).json(formatPayment({ ...updated, orderNumber: order.orderNumber, providerName: provider.name }));
+  } catch (err: any) {
+    const [updated] = await db.update(paymentsTable).set({
+      status: "failed", failureReason: err.message,
+    }).where(eq(paymentsTable.id, payment.id)).returning();
+    res.status(201).json(formatPayment({ ...updated, orderNumber: order.orderNumber, providerName: provider?.name ?? null }));
+  }
+});
+
 // ── PAYMENTS ────────────────────────────────────────────────────────────────
 router.get("/payments", async (req, res): Promise<void> => {
   const { method, status, dateFrom, dateTo, orderId } = req.query;

@@ -27,18 +27,30 @@ Always grep the generated file for the exact export name before writing imports.
 - Order appears in KDS (10s poll), POS, Payments immediately
 - `staffId: null`, `branchId` resolved from table record
 
+## Payment Flow (post-order)
+- After QR order is placed, customer sees payment selection screen (providers fetched from `GET /api/payments/providers`)
+- **CBE / TeleBirr**: customer enters receipt/transaction ID → `POST /api/payments/public` → auto-verified via `payment-verify.ts` → status = `verified` or `manual_review`
+- **Cash on Delivery**: `POST /api/payments/public` with `providerType=cash` → status = `pending` (NOT auto-verified)
+- Cashier sees pending cash payments in `/payments` page → clicks "Confirm Cash Received" → calls existing `POST /api/payments/:id/approve` → status = `verified`, order = `completed`
+- Revenue only counts when status = `verified`
+- `POST /api/payments/public` is placed BEFORE `requireAuth` routes in `payments.ts`
+
+## Ethiopian Payment Verification
+- CBE: PDF via `pdf-parse`; TeleBirr: HTML via `cheerio`
+- Logic in `artifacts/api-server/src/lib/payment-verify.ts` (ported from https://github.com/eyop23/ethio_payment_verfication)
+- Auto-approved if amount ≈ total (within 1 ETB) AND receiver account matches; else `manual_review`
+
 ## Mobile Responsiveness Pattern
 - Layout: sidebar is `fixed lg:static`, hidden via `-translate-x-full lg:translate-x-0`
 - Mobile top bar (`lg:hidden`) has hamburger (`AlignJustify`) toggling `sidebarOpen` state
 - Sidebar closes automatically on route change via `useEffect([location])`
 - Customer menu is mobile-first (max-w-lg, 390px optimized)
 
-## Ethiopian Payment Verification
-- CBE: PDF via `pdf-parse`; TeleBirr: HTML via `cheerio`
-- Auto-approved if amount ≈ total AND receiver account matches; else `manual_review`
-
 ## Demo Credentials
 admin/admin123 · manager1/pass123 · cashier1/pass123 · kitchen1/pass123
 
 ## Build
 `build.mjs` emits `dist/index.mjs` + `dist/seed.mjs`. `pnpm seed` to re-seed DB.
+
+## DB Index naming
+All index names are prefixed with the table name (e.g. `orders_branch_id_idx`, `menu_items_branch_id_idx`) — generic names like `branch_id_idx` cause a Drizzle duplicate error on push.

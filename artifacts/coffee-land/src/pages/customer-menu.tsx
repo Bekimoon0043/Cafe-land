@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
-import { Coffee, Search, ShoppingCart, X, Plus, Minus, ChevronRight, Globe, CheckCircle2 } from "lucide-react";
+import { Coffee, Search, ShoppingCart, X, Plus, Minus, ChevronRight, Globe, CheckCircle2, Banknote, Smartphone, Building2, AlertCircle, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -18,6 +18,9 @@ async function apiFetch(path: string) {
 interface Category  { id: number; nameEn: string; nameAm: string; icon?: string; }
 interface MenuItem  { id: number; nameEn: string; nameAm: string; descriptionEn?: string; descriptionAm?: string; price: number; categoryId: number; isAvailable: boolean; imageUrl?: string; }
 interface CartItem  { item: MenuItem; quantity: number; }
+interface Provider  { id: number; name: string; providerType: string; isActive: boolean; }
+
+type PaymentStep = "choose" | "receipt" | "submitting" | "done";
 
 const EMOJI: Record<string, string> = { coffee: "☕", hamburger: "🍔", cup: "🥤", cake: "🍰", dessert: "🍰", salad: "🥗", juice: "🥤" };
 
@@ -25,30 +28,41 @@ export default function CustomerMenu() {
   const params = useParams<{ tableId: string }>();
   const tableId = parseInt(params.tableId ?? "0");
 
-  const [lang, setLang]         = useState<"en"|"am">(() => (localStorage.getItem("coffee_land_lang") as "en"|"am") ?? "en");
-  const [categories, setCats]   = useState<Category[]>([]);
-  const [items, setItems]       = useState<MenuItem[]>([]);
-  const [selectedCat, setCat]   = useState<number|null>(null);
-  const [search, setSearch]     = useState("");
-  const [cart, setCart]         = useState<CartItem[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [loading, setLoading]   = useState(true);
-  const [tableLabel, setLabel]  = useState("");
-  const [placing, setPlacing]   = useState(false);
-  const [placed, setPlaced]     = useState(false);
-  const [orderNum, setOrderNum] = useState("");
-  const [error, setError]       = useState("");
+  const [lang, setLang]               = useState<"en"|"am">(() => (localStorage.getItem("coffee_land_lang") as "en"|"am") ?? "en");
+  const [categories, setCats]         = useState<Category[]>([]);
+  const [items, setItems]             = useState<MenuItem[]>([]);
+  const [providers, setProviders]     = useState<Provider[]>([]);
+  const [selectedCat, setCat]         = useState<number|null>(null);
+  const [search, setSearch]           = useState("");
+  const [cart, setCart]               = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen]       = useState(false);
+  const [loading, setLoading]         = useState(true);
+  const [tableLabel, setLabel]        = useState("");
+  const [placing, setPlacing]         = useState(false);
+  const [orderNum, setOrderNum]       = useState("");
+  const [orderId, setOrderId]         = useState<number|null>(null);
+  const [orderTotal, setOrderTotal]   = useState(0);
+  const [error, setError]             = useState("");
+
+  // Payment flow
+  const [payStep, setPayStep]           = useState<PaymentStep|null>(null);
+  const [chosenProvider, setChosen]     = useState<Provider|null>(null);
+  const [receiptInput, setReceiptInput] = useState("");
+  const [payError, setPayError]         = useState("");
+  const [payResult, setPayResult]       = useState<any>(null);
 
   useEffect(() => {
     Promise.all([
       apiFetch("/menu/categories"),
       apiFetch("/menu/items?available=true"),
       tableId ? apiFetch("/tables").catch(() => []) : Promise.resolve([]),
-    ]).then(([cats, its, tables]: any[]) => {
+      apiFetch("/payments/providers").catch(() => []),
+    ]).then(([cats, its, tables, provs]: any[]) => {
       setCats(cats);
       setItems(its);
-      const t = tables.find((t: any) => t.id === tableId);
-      if (t) setLabel(t.label);
+      const tbl = tables.find((t: any) => t.id === tableId);
+      if (tbl) setLabel(tbl.label);
+      setProviders((provs as Provider[]).filter(p => p.isActive));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [tableId]);
@@ -100,14 +114,44 @@ export default function CustomerMenu() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Server error"); }
       const order = await res.json();
       setOrderNum(order.orderNumber);
-      setPlaced(true);
+      setOrderId(order.id);
+      setOrderTotal(parseFloat(order.totalAmount ?? "0"));
       setCartOpen(false);
       setCart([]);
+      setPayStep("choose");
     } catch (e: any) {
       setError(e.message ?? "Failed to place order. Please try again.");
     } finally {
       setPlacing(false);
     }
+  };
+
+  const submitPayment = async (prov: Provider, receipt?: string) => {
+    if (!orderId) return;
+    setPayStep("submitting");
+    setPayError("");
+    try {
+      const body: any = { orderId, providerType: prov.providerType };
+      if (prov.providerType !== "cash") body.receiptId = (receipt ?? receiptInput).trim();
+      const res = await fetch(`${API_BASE}/api/payments/public`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Payment error"); }
+      const result = await res.json();
+      setPayResult(result);
+      setPayStep("done");
+    } catch (e: any) {
+      setPayError(e.message ?? "Payment failed. Please try again.");
+      setPayStep(prov.providerType === "cash" ? "choose" : "receipt");
+    }
+  };
+
+  const providerIcon = (type: string) => {
+    if (type === "cash") return <Banknote className="w-6 h-6 text-emerald-600" />;
+    if (type === "telebirr") return <Smartphone className="w-6 h-6 text-purple-600" />;
+    return <Building2 className="w-6 h-6 text-blue-600" />;
   };
 
   /* ── Loading ── */
@@ -120,26 +164,182 @@ export default function CustomerMenu() {
     </div>
   );
 
-  /* ── Order confirmed ── */
-  if (placed) return (
+  /* ── Payment: choose method ── */
+  if (payStep === "choose") return (
     <div className="min-h-screen bg-[#fdf8f3] flex items-center justify-center p-6">
-      <div className="bg-white border border-orange-100 rounded-3xl p-8 max-w-sm w-full text-center shadow-xl">
-        <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-5">
-          <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+      <div className="bg-white border border-orange-100 rounded-3xl p-6 max-w-sm w-full shadow-xl">
+        <div className="text-center mb-5">
+          <p className="text-xs font-mono bg-orange-50 text-[#cc5500] rounded-lg px-3 py-1.5 inline-block mb-3">#{orderNum}</p>
+          <h2 className="text-xl font-bold text-[#2c1810]">{t("Choose Payment","የክፍያ ዘዴ ይምረጡ")}</h2>
+          <p className="text-[#cc5500] font-bold text-lg mt-1">{orderTotal.toLocaleString()} ETB</p>
         </div>
-        <h2 className="text-2xl font-bold text-[#2c1810] mb-2">{t("Order Placed!","ትዕዛዝ ተቀብሏል!")}</h2>
-        {orderNum && <p className="text-sm font-mono bg-orange-50 text-[#cc5500] rounded-lg px-3 py-1.5 inline-block mb-3">#{orderNum}</p>}
-        <p className="text-gray-500 text-sm mb-2">{t("Your order is being prepared. A staff member will assist you shortly.","ትዕዛዝዎ እየተዘጋጀ ነው። ሰራተኛ ብዙም ሳይቆይ ይረዳዎታል።")}</p>
-        {tableLabel && <p className="font-bold text-[#cc5500] text-lg mb-6">{tableLabel}</p>}
+
+        <div className="space-y-3">
+          {providers.map(prov => (
+            <button
+              key={prov.id}
+              onClick={() => {
+                setChosen(prov);
+                setPayError("");
+                if (prov.providerType === "cash") {
+                  submitPayment(prov);
+                } else {
+                  setPayStep("receipt");
+                }
+              }}
+              className="w-full flex items-center gap-4 border-2 border-gray-100 hover:border-[#cc5500] rounded-2xl p-4 transition-all text-left group"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gray-50 group-hover:bg-orange-50 flex items-center justify-center transition-colors flex-shrink-0">
+                {providerIcon(prov.providerType)}
+              </div>
+              <div>
+                <p className="font-bold text-[#2c1810] text-sm">{prov.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {prov.providerType === "cash"
+                    ? t("Cashier will collect payment","ሰራተኛ ክፍያ ይሰበስባል")
+                    : prov.providerType === "telebirr"
+                    ? t("Pay via TeleBirr mobile","በTeleBirr ይክፈሉ")
+                    : t("Bank transfer receipt","የባንክ ዝውውር 영수증")}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#cc5500] ml-auto transition-colors" />
+            </button>
+          ))}
+        </div>
+
+        {payError && (
+          <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-sm text-red-600 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />{payError}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  /* ── Payment: enter receipt ID ── */
+  if (payStep === "receipt" && chosenProvider) return (
+    <div className="min-h-screen bg-[#fdf8f3] flex items-center justify-center p-6">
+      <div className="bg-white border border-orange-100 rounded-3xl p-6 max-w-sm w-full shadow-xl">
         <button
-          onClick={() => { setPlaced(false); }}
-          className="w-full bg-[#cc5500] text-white rounded-2xl py-3 font-semibold hover:bg-[#b34a00] transition-colors"
+          onClick={() => { setPayStep("choose"); setReceiptInput(""); setPayError(""); }}
+          className="text-xs text-gray-400 hover:text-[#cc5500] mb-4 flex items-center gap-1"
         >
-          {t("Order More","ተጨማሪ ትዕዛዝ ስጥ")}
+          ← {t("Back","ተመለስ")}
+        </button>
+
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
+            {providerIcon(chosenProvider.providerType)}
+          </div>
+          <div>
+            <h2 className="font-bold text-[#2c1810]">{chosenProvider.name}</h2>
+            <p className="text-xs text-gray-400">{t("Enter transaction reference","የግብይት ማጣቀሻ ያስገቡ")}</p>
+          </div>
+        </div>
+
+        <div className="bg-orange-50 rounded-2xl p-3 mb-4 text-sm">
+          <div className="flex justify-between text-gray-500 mb-1">
+            <span>{t("Order","ትዕዛዝ")}</span><span className="font-mono">#{orderNum}</span>
+          </div>
+          <div className="flex justify-between font-bold text-[#2c1810]">
+            <span>{t("Amount to pay","የሚከፈለው")}</span>
+            <span className="text-[#cc5500]">{orderTotal.toLocaleString()} ETB</span>
+          </div>
+        </div>
+
+        <div className="space-y-3 mb-4">
+          <label className="block text-sm font-semibold text-[#2c1810]">
+            {chosenProvider.providerType === "telebirr"
+              ? t("TeleBirr Transaction ID","የTeleBirr ግብይት ቁጥር")
+              : t("CBE Receipt / FT Reference","የCBE ደረሰኝ / FT ቁጥር")}
+          </label>
+          <input
+            value={receiptInput}
+            onChange={e => setReceiptInput(e.target.value)}
+            placeholder={chosenProvider.providerType === "telebirr" ? "e.g. 9876543210" : "e.g. FT12345678ABC"}
+            className="w-full border-2 border-gray-200 focus:border-[#cc5500] rounded-xl px-4 py-3 text-sm font-mono outline-none transition-colors"
+          />
+          <p className="text-xs text-gray-400">
+            {chosenProvider.providerType === "telebirr"
+              ? t("Find it in your TeleBirr app under transaction history","TeleBirr ላፕቶ ስር ባሉ ግብይቶች ይፈልጉ")
+              : t("Find it in your CBE receipt or mobile app","በCBE ደረሰኝ ወይም ሞባይል ላፕቶ ይፈልጉ")}
+          </p>
+        </div>
+
+        {payError && (
+          <div className="mb-3 bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-sm text-red-600 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />{payError}
+          </div>
+        )}
+
+        <button
+          onClick={() => chosenProvider && submitPayment(chosenProvider, receiptInput)}
+          disabled={!receiptInput.trim()}
+          className="w-full bg-[#cc5500] text-white rounded-2xl py-4 font-bold text-base disabled:opacity-50 active:scale-[0.98] transition-all hover:bg-[#b34a00]"
+        >
+          {t("Submit Payment","ክፍያ አስገባ")}
         </button>
       </div>
     </div>
   );
+
+  /* ── Payment: submitting ── */
+  if (payStep === "submitting") return (
+    <div className="min-h-screen bg-[#fdf8f3] flex items-center justify-center p-6">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="w-10 h-10 text-[#cc5500] animate-spin" />
+        <p className="text-gray-500 text-sm">{t("Verifying payment…","ክፍያ እየተረጋገጠ ነው…")}</p>
+      </div>
+    </div>
+  );
+
+  /* ── Payment: done ── */
+  if (payStep === "done") {
+    const isCash = payResult?.providerType === "cash";
+    const isVerified = payResult?.status === "verified";
+    const isReview = payResult?.status === "manual_review";
+
+    return (
+      <div className="min-h-screen bg-[#fdf8f3] flex items-center justify-center p-6">
+        <div className="bg-white border border-orange-100 rounded-3xl p-8 max-w-sm w-full text-center shadow-xl">
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 ${isCash ? "bg-blue-100" : isVerified ? "bg-emerald-100" : "bg-amber-100"}`}>
+            {isCash
+              ? <Banknote className="w-10 h-10 text-blue-500" />
+              : isVerified
+              ? <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+              : <AlertCircle className="w-10 h-10 text-amber-500" />}
+          </div>
+
+          <h2 className="text-2xl font-bold text-[#2c1810] mb-2">
+            {isCash
+              ? t("Order Placed!","ትዕዛዝ ተቀብሏል!")
+              : isVerified
+              ? t("Payment Confirmed!","ክፍያ ተረጋግጧል!")
+              : t("Payment Submitted","ክፍያ ቀርቧል")}
+          </h2>
+
+          <p className="text-sm font-mono bg-orange-50 text-[#cc5500] rounded-lg px-3 py-1.5 inline-block mb-3">#{orderNum}</p>
+
+          <p className="text-gray-500 text-sm mb-2">
+            {isCash
+              ? t("A cashier will come to collect your payment shortly.","ገንዘብ ተቀባይ ብዙም ሳይቆይ ክፍያ ለመቀበል ይመጣል።")
+              : isVerified
+              ? t("Your payment has been verified. Your order is being prepared!","ክፍያዎ ተረጋግጧል። ትዕዛዝዎ እየተዘጋጀ ነው!")
+              : t("Your payment receipt was submitted. Staff will verify it shortly.","ደረሰኝዎ ቀርቧል። ሰራተኛ ብዙም ሳይቆይ ያረጋግጣል።")}
+          </p>
+
+          {tableLabel && <p className="font-bold text-[#cc5500] text-lg mb-6">{tableLabel}</p>}
+
+          <button
+            onClick={() => { setPayStep(null); setPayResult(null); setOrderId(null); setReceiptInput(""); setChosen(null); }}
+            className="w-full bg-[#cc5500] text-white rounded-2xl py-3 font-semibold hover:bg-[#b34a00] transition-colors"
+          >
+            {t("Order More","ተጨማሪ ትዕዛዝ ስጥ")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const catIcon = (catId: number) => {
     const c = categories.find(x => x.id === catId);

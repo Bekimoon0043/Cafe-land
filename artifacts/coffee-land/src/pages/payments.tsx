@@ -150,6 +150,9 @@ export default function Payments() {
                         {p.providerType !== "cash" && (p.status === "pending" || p.status === "failed") && (
                           <button onClick={() => { setSelectedPayment(p); setReceiptId(""); setVerifyDialog(true); }} className="text-primary text-xs hover:underline font-medium">Verify</button>
                         )}
+                        {p.providerType === "cash" && p.status === "pending" && (
+                          <button onClick={() => handleManualApprove(p.id)} className="text-emerald-600 text-xs hover:underline font-medium">Confirm Cash Received</button>
+                        )}
                         {p.status === "manual_review" && (
                           <button onClick={() => handleManualApprove(p.id)} className="text-emerald-600 text-xs hover:underline font-medium">Approve</button>
                         )}
