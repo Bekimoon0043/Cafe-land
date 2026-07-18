@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BilingualText } from "@/components/bilingual-text";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 export default function Login() {
   const [, setLocation] = useLocation();

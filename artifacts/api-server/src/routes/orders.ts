@@ -99,7 +99,7 @@ router.post("/orders/public", async (req, res): Promise<void> => {
   }
 
   const [order] = await db.insert(ordersTable).values({
-    orderNumber, orderType: "dine_in", status: "pending",
+    orderNumber, orderType: "dine_in", status: "awaiting_payment",
     tableId: tableId ?? null, customerId: null, staffId: null,
     notes: notes ?? "QR order", deliveryAddress: null,
     discountAmount: "0", taxAmount: String(tax), totalAmount: String(total),

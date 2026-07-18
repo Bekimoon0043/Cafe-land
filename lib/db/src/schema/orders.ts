@@ -10,7 +10,7 @@ export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
   orderType: text("order_type", { enum: ["dine_in", "takeaway", "delivery"] }).notNull(),
-  status: text("status", { enum: ["pending", "preparing", "ready", "served", "completed", "cancelled"] }).notNull().default("pending"),
+  status: text("status", { enum: ["awaiting_payment", "pending", "preparing", "ready", "served", "completed", "cancelled"] }).notNull().default("pending"),
   tableId: integer("table_id").references(() => tablesTable.id),
   customerId: integer("customer_id").references(() => customersTable.id),
   staffId: integer("staff_id").references(() => usersTable.id),

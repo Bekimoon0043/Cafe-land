@@ -3,7 +3,7 @@ import { useGetKitchenDisplayOrders, getGetKitchenDisplayOrdersQueryKey, useUpda
 import { BilingualText } from "@/components/bilingual-text";
 import { Button } from "@/components/ui/button";
 import { Clock, CheckCircle2, ChefHat, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function KDS() {

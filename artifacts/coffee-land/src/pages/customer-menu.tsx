@@ -288,7 +288,7 @@ export default function CustomerMenu() {
     <div className="min-h-screen bg-[#fdf8f3] flex items-center justify-center p-6">
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="w-10 h-10 text-[#cc5500] animate-spin" />
-        <p className="text-gray-500 text-sm">{t("Verifying payment…","ክፍያ እየተረጋገጠ ነው…")}</p>
+        <p className="text-gray-500 text-sm">{t("Submitting payment…","ክፍያ እየቀረበ ነው…")}</p>
       </div>
     </div>
   );
@@ -296,36 +296,24 @@ export default function CustomerMenu() {
   /* ── Payment: done ── */
   if (payStep === "done") {
     const isCash = payResult?.providerType === "cash";
-    const isVerified = payResult?.status === "verified";
-    const isReview = payResult?.status === "manual_review";
 
     return (
       <div className="min-h-screen bg-[#fdf8f3] flex items-center justify-center p-6">
         <div className="bg-white border border-orange-100 rounded-3xl p-8 max-w-sm w-full text-center shadow-xl">
-          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 ${isCash ? "bg-blue-100" : isVerified ? "bg-emerald-100" : "bg-amber-100"}`}>
-            {isCash
-              ? <Banknote className="w-10 h-10 text-blue-500" />
-              : isVerified
-              ? <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-              : <AlertCircle className="w-10 h-10 text-amber-500" />}
+          <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-5">
+            <CheckCircle2 className="w-10 h-10 text-emerald-500" />
           </div>
 
           <h2 className="text-2xl font-bold text-[#2c1810] mb-2">
-            {isCash
-              ? t("Order Placed!","ትዕዛዝ ተቀብሏል!")
-              : isVerified
-              ? t("Payment Confirmed!","ክፍያ ተረጋግጧል!")
-              : t("Payment Submitted","ክፍያ ቀርቧል")}
+            {t("Order Received!","ትዕዛዝ ተቀብሏል!")}
           </h2>
 
           <p className="text-sm font-mono bg-orange-50 text-[#cc5500] rounded-lg px-3 py-1.5 inline-block mb-3">#{orderNum}</p>
 
           <p className="text-gray-500 text-sm mb-2">
             {isCash
-              ? t("A cashier will come to collect your payment shortly.","ገንዘብ ተቀባይ ብዙም ሳይቆይ ክፍያ ለመቀበል ይመጣል።")
-              : isVerified
-              ? t("Your payment has been verified. Your order is being prepared!","ክፍያዎ ተረጋግጧል። ትዕዛዝዎ እየተዘጋጀ ነው!")
-              : t("Your payment receipt was submitted. Staff will verify it shortly.","ደረሰኝዎ ቀርቧል። ሰራተኛ ብዙም ሳይቆይ ያረጋግጣል።")}
+              ? t("A cashier will come to collect your payment. Your order will be sent to the kitchen once payment is confirmed.","ሰራተኛ ክፍያ ለመቀበል ይመጣሉ። ክፍያ ከተረጋገጠ በኋላ ትዕዛዝዎ ወደ ኩሽና ይላካል።")
+              : t("Your payment reference was submitted. A cashier will verify it and your order will be prepared shortly.","የክፍያ ማጣቀሻዎ ቀርቧል። ሰራተኛ ካረጋገጠ በኋላ ትዕዛዝዎ ይዘጋጃል።")}
           </p>
 
           {tableLabel && <p className="font-bold text-[#cc5500] text-lg mb-6">{tableLabel}</p>}

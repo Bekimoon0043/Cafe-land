@@ -12,7 +12,7 @@ import { Plus, Edit2, Trash2, Search, Coffee, Upload, X, Loader2 } from "lucide-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { useQueryClient } from "@tanstack/react-query";
 import { getToken } from "@/lib/auth";
 

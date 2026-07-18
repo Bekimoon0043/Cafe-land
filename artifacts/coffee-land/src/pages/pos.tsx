@@ -12,7 +12,7 @@ import {
   OrderInput,
   OrderInputOrderType
 } from "@workspace/api-client-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
