@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
-import { Coffee, Search, ShoppingCart, X, Plus, Minus, ChevronRight, Globe, CheckCircle2, Banknote, Smartphone, Building2, AlertCircle, Loader2 } from "lucide-react";
+import { Coffee, Search, ShoppingCart, X, Plus, Minus, ChevronRight, Globe, CheckCircle2, Banknote, Smartphone, Building2, AlertCircle, Loader2, Copy, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -18,7 +18,7 @@ async function apiFetch(path: string) {
 interface Category  { id: number; nameEn: string; nameAm: string; icon?: string; }
 interface MenuItem  { id: number; nameEn: string; nameAm: string; descriptionEn?: string; descriptionAm?: string; price: number; categoryId: number; isAvailable: boolean; imageUrl?: string; }
 interface CartItem  { item: MenuItem; quantity: number; }
-interface Provider  { id: number; name: string; providerType: string; isActive: boolean; }
+interface Provider  { id: number; name: string; providerType: string; isActive: boolean; receiverAccountNo?: string | null; }
 
 type PaymentStep = "choose" | "receipt" | "submitting" | "done";
 
@@ -49,6 +49,7 @@ export default function CustomerMenu() {
   const [chosenProvider, setChosen]     = useState<Provider|null>(null);
   const [receiptInput, setReceiptInput] = useState("");
   const [payError, setPayError]         = useState("");
+  const [copied, setCopied]             = useState(false);
   const [payResult, setPayResult]       = useState<any>(null);
 
   useEffect(() => {
@@ -246,6 +247,39 @@ export default function CustomerMenu() {
             <span className="text-[#cc5500]">{orderTotal.toLocaleString()} ETB</span>
           </div>
         </div>
+
+        {/* ── Account number to send money to ── */}
+        {chosenProvider.receiverAccountNo && (
+          <div className="bg-[#2c1810] rounded-2xl p-4 mb-4">
+            <p className="text-white/60 text-xs mb-1">
+              {chosenProvider.providerType === "telebirr"
+                ? t("Send to TeleBirr number","ወደዚህ TeleBirr ቁጥር ይላኩ")
+                : t("Send to CBE account","ወደዚህ CBE ሒሳብ ቁጥር ይላኩ")}
+            </p>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-white font-mono text-lg font-bold tracking-wider select-all">
+                {chosenProvider.receiverAccountNo}
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(chosenProvider.receiverAccountNo!);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white text-xs px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+              >
+                {copied
+                  ? <><Check className="w-3.5 h-3.5 text-emerald-400" />{t("Copied!","ተቀድቷል!")}</>
+                  : <><Copy className="w-3.5 h-3.5" />{t("Copy","ቅዳ")}</>}
+              </button>
+            </div>
+            <p className="text-white/50 text-xs mt-2">
+              {chosenProvider.providerType === "telebirr"
+                ? t("Transfer the exact amount via TeleBirr, then enter the transaction ID below.","ትክክለኛውን መጠን በTeleBirr ይላኩ፣ ከዚያ የግብይት ቁጥሩን ከዚህ በታች ያስገቡ።")
+                : t("Transfer the exact amount to this account, then enter your FT reference below.","ትክክለኛውን መጠን ወደዚህ ሒሳብ ያስተላልፉ፣ ከዚያ የFT ቁጥርዎን ከዚህ በታች ያስገቡ።")}
+            </p>
+          </div>
+        )}
 
         <div className="space-y-3 mb-4">
           <label className="block text-sm font-semibold text-[#2c1810]">

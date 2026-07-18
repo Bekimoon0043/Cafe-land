@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CreditCard, CheckCircle, XCircle, Clock, Search, QrCode, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/lib/notify";
+import { toast, speak } from "@/lib/notify";
 import {
   useListPayments, getListPaymentsQueryKey,
   useVerifyPayment, useApprovePayment,
@@ -36,8 +36,33 @@ export default function Payments() {
   const [editingProvider, setEditingProvider] = useState<any>(null);
   const [providerForm, setProviderForm] = useState({ baseVerificationUrl: "", receiverAccountNo: "" });
 
-  const { data: payments = [], isLoading } = useListPayments({ query: { queryKey: getListPaymentsQueryKey() } });
+  const { data: payments = [], isLoading } = useListPayments({
+    query: { queryKey: getListPaymentsQueryKey(), refetchInterval: 12000 }
+  });
   const { data: providers = [] } = useListPaymentProviders({ query: { queryKey: getListPaymentProvidersQueryKey() } });
+
+  // Announce new pending payments that weren't in the previous poll
+  const seenPaymentIds = useRef<Set<number>>(new Set());
+  const isFirstLoad = useRef(true);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const pendingIds = (payments as any[])
+      .filter(p => p.status === "pending")
+      .map(p => p.id as number);
+    const newPending = pendingIds.filter(id => !seenPaymentIds.current.has(id));
+
+    if (!isFirstLoad.current && newPending.length > 0) {
+      newPending.forEach(() => {
+        speak("New order arrived");
+        toast.info("New payment pending confirmation");
+      });
+    }
+
+    // Track ALL payment ids (not just pending) so dismissed ones don't re-trigger
+    (payments as any[]).forEach(p => seenPaymentIds.current.add(p.id));
+    isFirstLoad.current = false;
+  }, [payments, isLoading]);
   const verifyPayment = useVerifyPayment();
   const approvePayment = useApprovePayment();
   const updateProvider = useUpdatePaymentProvider();

@@ -92,6 +92,23 @@ function base(message: Parameters<ToastFn>[0], options?: Parameters<ToastFn>[1])
   return _toast(message, options);
 }
 
+// ── Speech ─────────────────────────────────────────────────────────────────
+export function speak(text: string, lang = "en-US") {
+  try {
+    if (!window.speechSynthesis) return;
+    // Cancel any ongoing speech before queuing a new one
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = lang;
+    utt.rate = 0.95;
+    utt.pitch = 1;
+    utt.volume = 1;
+    window.speechSynthesis.speak(utt);
+  } catch {
+    // Speech not supported — fail silently
+  }
+}
+
 // Re-export everything from sonner we don't override
 export const toast = Object.assign(base, {
   success,

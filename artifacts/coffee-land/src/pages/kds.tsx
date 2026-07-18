@@ -1,19 +1,39 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useGetKitchenDisplayOrders, getGetKitchenDisplayOrdersQueryKey, useUpdateOrderStatus } from "@workspace/api-client-react";
 import { BilingualText } from "@/components/bilingual-text";
 import { Button } from "@/components/ui/button";
 import { Clock, CheckCircle2, ChefHat, AlertCircle } from "lucide-react";
-import { toast } from "@/lib/notify";
+import { toast, speak } from "@/lib/notify";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function KDS() {
   const queryClient = useQueryClient();
+  const seenOrderIds = useRef<Set<number>>(new Set());
+  const isFirstLoad = useRef(true);
+
   const { data: orders = [], isLoading } = useGetKitchenDisplayOrders({
     query: { 
       queryKey: getGetKitchenDisplayOrdersQueryKey(),
       refetchInterval: 10000 // Poll every 10 seconds
     }
   });
+
+  // Announce new orders that weren't in the previous poll
+  useEffect(() => {
+    if (isLoading) return;
+    const currentIds = orders.map((o: any) => o.id as number);
+    const newOrders = currentIds.filter(id => !seenOrderIds.current.has(id));
+
+    if (!isFirstLoad.current && newOrders.length > 0) {
+      newOrders.forEach(() => {
+        speak("New order arrived");
+        toast.info("New order arrived");
+      });
+    }
+
+    currentIds.forEach(id => seenOrderIds.current.add(id));
+    isFirstLoad.current = false;
+  }, [orders, isLoading]);
 
   const updateStatus = useUpdateOrderStatus();
 
