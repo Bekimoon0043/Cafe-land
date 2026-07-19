@@ -15,6 +15,12 @@ router.get("/reports/dashboard", requireAuth, async (_req, res): Promise<void> =
     .where(and(gte(ordersTable.createdAt, today), sql`${ordersTable.status} != 'cancelled'`));
   const todayRevenue = todayOrders.reduce((sum, o) => sum + parseFloat(o.totalAmount as string), 0);
 
+  // POS revenue = staff-placed orders (staffId != null); QR = customer self-order (staffId = null)
+  const posOrders = todayOrders.filter(o => o.staffId !== null);
+  const qrOrders  = todayOrders.filter(o => o.staffId === null);
+  const posRevenue = posOrders.reduce((sum, o) => sum + parseFloat(o.totalAmount as string), 0);
+  const qrRevenue  = qrOrders.reduce((sum, o) => sum + parseFloat(o.totalAmount as string), 0);
+
   // Active orders (pending + preparing + ready)
   const activeOrders = await db.select().from(ordersTable)
     .where(sql`${ordersTable.status} IN ('pending', 'preparing', 'ready')`);
@@ -68,6 +74,10 @@ router.get("/reports/dashboard", requireAuth, async (_req, res): Promise<void> =
   res.json({
     todayRevenue: Math.round(todayRevenue * 100) / 100,
     todayOrders: todayOrders.length,
+    posRevenue: Math.round(posRevenue * 100) / 100,
+    posOrders: posOrders.length,
+    qrRevenue: Math.round(qrRevenue * 100) / 100,
+    qrOrders: qrOrders.length,
     activeOrders: activeOrders.length,
     lowStockCount,
     avgOrderValue: Math.round(avgOrderValue * 100) / 100,

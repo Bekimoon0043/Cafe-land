@@ -1,4 +1,4 @@
-import { TrendingUp, ShoppingBag, Clock, AlertTriangle, ChefHat, Coffee } from "lucide-react";
+import { TrendingUp, ShoppingBag, Clock, AlertTriangle, ChefHat, Coffee, Monitor, QrCode } from "lucide-react";
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey, useGetHourlySales, getGetHourlySalesQueryKey } from "@workspace/api-client-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -6,11 +6,17 @@ export default function Dashboard() {
   const { data: dashboard } = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey() } });
   const { data: hourly = [] } = useGetHourlySales({ query: { queryKey: getGetHourlySalesQueryKey() } });
 
+  const d = dashboard as any;
+
   const kpis = [
-    { label: "Today's Revenue", value: `${(dashboard?.todayRevenue ?? 0).toLocaleString()} ETB`, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Today's Orders",  value: dashboard?.todayOrders ?? 0,   icon: ShoppingBag, color: "text-blue-600",   bg: "bg-blue-50" },
-    { label: "Active Orders",   value: dashboard?.activeOrders ?? 0,  icon: Clock,       color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "Low Stock",       value: dashboard?.lowStockCount ?? 0, icon: AlertTriangle,color: "text-red-600",  bg: "bg-red-50" },
+    { label: "Today's Revenue",  value: `${(d?.todayRevenue ?? 0).toLocaleString()} ETB`,  icon: TrendingUp,    color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "POS Revenue",      value: `${(d?.posRevenue   ?? 0).toLocaleString()} ETB`,  icon: Monitor,       color: "text-blue-600",   bg: "bg-blue-50",
+      sub: `${d?.posOrders ?? 0} staff orders` },
+    { label: "QR Revenue",       value: `${(d?.qrRevenue    ?? 0).toLocaleString()} ETB`,  icon: QrCode,        color: "text-purple-600", bg: "bg-purple-50",
+      sub: `${d?.qrOrders ?? 0} self-service orders` },
+    { label: "Today's Orders",   value: d?.todayOrders  ?? 0,                              icon: ShoppingBag,   color: "text-sky-600",    bg: "bg-sky-50" },
+    { label: "Active Orders",    value: d?.activeOrders ?? 0,                              icon: Clock,         color: "text-amber-600",  bg: "bg-amber-50" },
+    { label: "Low Stock",        value: d?.lowStockCount ?? 0,                             icon: AlertTriangle, color: "text-red-600",    bg: "bg-red-50" },
   ];
 
   const ordersByStatus: { status: string; count: number }[] = (dashboard as any)?.ordersByStatus ?? [];
@@ -25,7 +31,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-5">
         {kpis.map(kpi => (
           <div key={kpi.label} className="bg-card border border-border rounded-xl p-3 md:p-4 shadow-sm">
             <div className="flex items-start justify-between mb-2">
@@ -34,7 +40,8 @@ export default function Dashboard() {
                 <kpi.icon className={`w-3.5 h-3.5 ${kpi.color}`} />
               </div>
             </div>
-            <p className={`text-lg md:text-2xl font-bold ${kpi.color} break-all`}>{kpi.value}</p>
+            <p className={`text-lg md:text-xl font-bold ${kpi.color} break-all`}>{kpi.value}</p>
+            {(kpi as any).sub && <p className="text-xs text-muted-foreground mt-0.5">{(kpi as any).sub}</p>}
           </div>
         ))}
       </div>
