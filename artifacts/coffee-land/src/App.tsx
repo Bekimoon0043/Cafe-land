@@ -20,6 +20,7 @@ import Customers from '@/pages/customers';
 import Payments from '@/pages/payments';
 import Reports from '@/pages/reports';
 import Settings from '@/pages/settings';
+import Expenses from '@/pages/expenses';
 
 // Public page — no auth required
 import CustomerMenu from '@/pages/customer-menu';
@@ -85,6 +86,9 @@ function Router() {
       </Route>
       <Route path="/payments">
         {() => <ProtectedRoute component={Payments} roles={['admin', 'manager', 'cashier']} />}
+      </Route>
+      <Route path="/expenses">
+        {() => <ProtectedRoute component={Expenses} roles={['admin', 'manager']} />}
       </Route>
       <Route path="/reports">
         {() => <ProtectedRoute component={Reports} roles={['admin', 'manager']} />}

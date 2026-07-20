@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   Coffee, LayoutDashboard, ShoppingCart, ChefHat, Menu as MenuIcon,
   Grid2X2, Package, Users, UsersRound, CreditCard, BarChart3, Settings,
-  LogOut, Globe, X, AlignJustify,
+  LogOut, Globe, X, AlignJustify, Receipt,
 } from "lucide-react";
 import { getUserFromToken, clearToken } from "@/lib/auth";
 import { switchLanguage } from "@/components/bilingual-text";
@@ -44,6 +44,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/staff",     label: "Staff",         icon: Users,           roles: ["admin", "manager"] },
     { href: "/customers", label: "Customers",     icon: UsersRound,      roles: ["admin", "manager", "cashier"] },
     { href: "/payments",  label: "Payments",      icon: CreditCard,      roles: ["admin", "manager", "cashier"] },
+    { href: "/expenses",  label: "Expenses",      icon: Receipt,         roles: ["admin", "manager"] },
     { href: "/reports",   label: "Reports",       icon: BarChart3,       roles: ["admin", "manager"] },
     { href: "/settings",  label: "Settings",      icon: Settings,        roles: ["admin", "manager"] },
   ];

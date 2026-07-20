@@ -11,6 +11,7 @@ import paymentsRouter from "./payments";
 import reportsRouter from "./reports";
 import settingsRouter from "./settings";
 import uploadRouter from "./upload";
+import expensesRouter from "./expenses";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use(paymentsRouter);
 router.use(reportsRouter);
 router.use(settingsRouter);
 router.use(uploadRouter);
+router.use(expensesRouter);
 
 export default router;

@@ -7,7 +7,7 @@ import { usersTable } from "./users";
 export const employeesTable = pgTable("employees", {
   id: serial("id").primaryKey(),
   fullName: text("full_name").notNull(),
-  role: text("role", { enum: ["admin", "manager", "cashier", "kitchen"] }).notNull(),
+  role: text("role", { enum: ["admin", "manager", "cashier", "kitchen", "waiter"] }).notNull(),
   phone: text("phone"),
   email: text("email"),
   hireDate: date("hire_date", { mode: "string" }).notNull(),
@@ -24,6 +24,11 @@ export const shiftsTable = pgTable("shifts", {
   clockIn: timestamp("clock_in", { withTimezone: true }).notNull().defaultNow(),
   clockOut: timestamp("clock_out", { withTimezone: true }),
   totalHours: numeric("total_hours", { precision: 6, scale: 2 }),
+  openingCash: numeric("opening_cash", { precision: 12, scale: 2 }).default("0"),
+  closingCash: numeric("closing_cash", { precision: 12, scale: 2 }),
+  cashDifference: numeric("cash_difference", { precision: 12, scale: 2 }),
+  status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
+  notes: text("notes"),
 });
 
 export const auditLogsTable = pgTable("audit_logs", {
