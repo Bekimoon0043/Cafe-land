@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: cafe-land-api
+    env: node
+    plan: free
+    buildCommand: pnpm install && pnpm run build --filter @workspace/api-server
+    startCommand: pnpm run start --filter @workspace/api-server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cafe-land-db
+          property: connectionString
+    autoDeploy: true
+
+  - type: web
+    name: cafe-land-frontend
+    env: node
+    plan: free
+    buildCommand: pnpm install && pnpm run build --filter @workspace/coffee-land
+    startCommand: pnpm run serve --filter @workspace/coffee-land
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: BASE_PATH
+        value: /
+    autoDeploy: true
+
+databases:
+  - name: cafe-land-db
+    plan: free
